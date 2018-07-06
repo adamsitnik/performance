@@ -3,16 +3,15 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
-using System.Diagnostics;
-using Microsoft.Xunit.Performance;
+using BenchmarkDotNet.Attributes;
 
 namespace System.Linq.Parallel.Tests
 {
-    public sealed class GroupByPerfTestsUnordered : GroupByPerfTests
+    public class GroupByPerfTestsUnordered : GroupByPerfTests
     {
     }
 
-    public sealed class GroupByPerfTestsOrdered : GroupByPerfTests
+    public class GroupByPerfTestsOrdered : GroupByPerfTests
     {
         protected override ParallelQuery<int> CreateQueryBase(int count) => base.CreateQueryBase(count).AsOrdered();
     }
@@ -35,137 +34,106 @@ namespace System.Linq.Parallel.Tests
             return CreateQueryBase(groupCount * elementsPerGroup).GroupBy(x => x % groupCount, resultSelector);
         }
 
-        [Benchmark(InnerIterationCount = 1_000_000), MeasureGCAllocations]
-        public void QueryCreation()
-        {
-            QueryCreation(10);
-        }
+        [Benchmark]
+        public void QueryCreation() => QueryCreation(10, 1_000_000);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct__10()
-        {
-            CrossProduct(10);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct____10))]
+        public void SetupCrossProduct____10() => SetupCrossProductQuery(10);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct__25()
-        {
-            CrossProduct(25);
-        }
+        [Benchmark]
+        public void CrossProduct____10() => CrossProduct(CrossProductInnerIterationCount);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct__50()
-        {
-            CrossProduct(50);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct____25))]
+        public void SetupCrossProduct____25() => SetupCrossProductQuery(25);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct_100()
-        {
-            CrossProduct(100);
-        }
+        [Benchmark]
+        public void CrossProduct____25() => CrossProduct(CrossProductInnerIterationCount);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct_500()
-        {
-            CrossProduct(500);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct____50))]
+        public void SetupCrossProduct____50() => SetupCrossProductQuery(50);
 
-        [Benchmark(InnerIterationCount = EnumerateGroupInnerIterationCount), MeasureGCAllocations]
-        public void EnumerateGroup__10()
-        {
-            EnumerateGroup(10);
-        }
+        [Benchmark]
+        public void CrossProduct____50() => CrossProduct(CrossProductInnerIterationCount);
 
-        [Benchmark(InnerIterationCount = EnumerateGroupInnerIterationCount), MeasureGCAllocations]
-        public void EnumerateGroup__25()
-        {
-            EnumerateGroup(25);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct___100))]
+        public void SetupCrossProduct____100() => SetupCrossProductQuery(100);
 
-        [Benchmark(InnerIterationCount = EnumerateGroupInnerIterationCount), MeasureGCAllocations]
-        public void EnumerateGroup__50()
-        {
-            EnumerateGroup(50);
-        }
+        [Benchmark]
+        public void CrossProduct___100() => CrossProduct(CrossProductInnerIterationCount);
 
-        [Benchmark(InnerIterationCount = EnumerateGroupInnerIterationCount), MeasureGCAllocations]
-        public void EnumerateGroup_100()
-        {
-            EnumerateGroup(100);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct___500))]
+        public void SetupCrossProduct____500() => SetupCrossProductQuery(500);
 
-        [Benchmark(InnerIterationCount = EnumerateGroupInnerIterationCount), MeasureGCAllocations]
-        public void EnumerateGroup_500()
-        {
-            EnumerateGroup(500);
-        }
+        [Benchmark]
+        public void CrossProduct___500() => CrossProduct(CrossProductInnerIterationCount);
+            
+        [GlobalSetup(Target = nameof(EnumerateGroup__10))]
+        public void SetupEnumerateGroup__10() => SetupEnumerateGroupQuery(10, EnumerateGroupInnerIterationCount);
 
-        public void QueryCreation(int elementsPerGroup)
-        {
-            Debug.Assert(TotalElementCount % elementsPerGroup == 0);
-            QueryCreation(TotalElementCount / elementsPerGroup, elementsPerGroup);
-        }
+        [Benchmark]
+        public void EnumerateGroup__10() => EnumerateGroup();
+
+        [GlobalSetup(Target = nameof(EnumerateGroup__25))]
+        public void SetupEnumerateGroup__25() => SetupEnumerateGroupQuery(25, EnumerateGroupInnerIterationCount);
+
+        [Benchmark]
+        public void EnumerateGroup__25() => EnumerateGroup();
+        
+        [GlobalSetup(Target = nameof(EnumerateGroup__50))]
+        public void SetupEnumerateGroup__50() => SetupEnumerateGroupQuery(50, EnumerateGroupInnerIterationCount);
+
+        [Benchmark]
+        public void EnumerateGroup__50() => EnumerateGroup();
+
+        [GlobalSetup(Target = nameof(EnumerateGroup_100))]
+        public void SetupEnumerateGroup_100() => SetupEnumerateGroupQuery(100, EnumerateGroupInnerIterationCount);
+        
+        [Benchmark]
+        public void EnumerateGroup_100() => EnumerateGroup();
+
+        [GlobalSetup(Target = nameof(EnumerateGroup_500))]
+        public void SetupEnumerateGroup_500() => SetupEnumerateGroupQuery(500, EnumerateGroupInnerIterationCount);
+        
+        [Benchmark]
+        public void EnumerateGroup_500() => EnumerateGroup();
 
         private static volatile ParallelQuery<KeyValuePair<int, int>> _queryCreationResult;
 
-        public void QueryCreation(int groupCount, int elementsPerGroup)
+        private void QueryCreation(int elementsPerGroup, long innerIterationCount)
         {
-            foreach (BenchmarkIteration iteration in Benchmark.Iterations)
+            for (int i = 0; i < innerIterationCount; i++)
             {
-                long iters = Benchmark.InnerIterationCount;
-                using (iteration.StartMeasurement())
-                {
-                    for (int i = 0; i < iters; i++)
-                    {
-                        _queryCreationResult = CreateQuery(groupCount, elementsPerGroup);
-                    }
-                }
+                _queryCreationResult = CreateQuery(TotalElementCount / elementsPerGroup, elementsPerGroup);
             }
         }
 
-        public void CrossProduct(int elementsPerGroup)
-        {
-            Debug.Assert(TotalElementCount % elementsPerGroup == 0);
-            CrossProduct(TotalElementCount / elementsPerGroup, elementsPerGroup);
-        }
+        private ParallelQuery<KeyValuePair<int, int>> _valuesCross;
 
+        private void SetupCrossProductQuery(int elementsPerGroup) => _valuesCross = CreateQuery(TotalElementCount / elementsPerGroup, elementsPerGroup);
+        
         private static volatile int _crossProductResult;
 
-        public void CrossProduct(int groupCount, int elementsPerGroup)
+        private void CrossProduct(long innerIterationCount)
         {
-            ParallelQuery<KeyValuePair<int, int>> values = CreateQuery(groupCount, elementsPerGroup);
+            ParallelQuery<KeyValuePair<int, int>> values = _valuesCross;
 
-            foreach (BenchmarkIteration iteration in Benchmark.Iterations)
+            for (int i = 0; i < innerIterationCount; i++)
             {
-                long iters = Benchmark.InnerIterationCount;
-                using (iteration.StartMeasurement())
+                _crossProductResult = 0;
+                foreach (KeyValuePair<int, int> pair in values)
                 {
-                    for (int i = 0; i < iters; i++)
-                    {
-                        _crossProductResult = 0;
-                        foreach (KeyValuePair<int, int> pair in values)
-                        {
-                            _crossProductResult += pair.Key * pair.Value;
-                        }
-                    }
+                    _crossProductResult += pair.Key * pair.Value;
                 }
             }
         }
 
-        public void EnumerateGroup(int elementsPerGroup)
+        private ParallelQuery<KeyValuePair<int, int>> _valuesGroup;
+
+        private void SetupEnumerateGroupQuery(int elementsPerGroup, long innerIterationCount)
         {
-            Debug.Assert(TotalElementCount % elementsPerGroup == 0);
-            EnumerateGroup(TotalElementCount / elementsPerGroup, elementsPerGroup);
-        }
-
-        private static volatile int _enumerateGroupResult;
-
-        public void EnumerateGroup(int groupCount, int elementsPerGroup)
-        {
-            int iters = (int)Benchmark.InnerIterationCount;
-
-            ParallelQuery<KeyValuePair<int, int>> values = CreateQuery(groupCount, elementsPerGroup,
+            int iters = (int)innerIterationCount;
+            
+            _valuesGroup = CreateQuery(TotalElementCount / elementsPerGroup, elementsPerGroup,
                 (key, vals) =>
                 {
                     int value = 0;
@@ -177,17 +145,18 @@ namespace System.Linq.Parallel.Tests
 
                     return KeyValuePair.Create(key, value / iters);
                 });
+        }
 
-            foreach (BenchmarkIteration iteration in Benchmark.Iterations)
+        private static volatile int _enumerateGroupResult;
+
+        private void EnumerateGroup()
+        {
+            ParallelQuery<KeyValuePair<int, int>> values = _valuesGroup;
+
+            _enumerateGroupResult = 0;
+            foreach (KeyValuePair<int, int> pair in values)
             {
-                using (iteration.StartMeasurement())
-                {
-                    _enumerateGroupResult = 0;
-                    foreach (KeyValuePair<int, int> pair in values)
-                    {
-                        _enumerateGroupResult += pair.Key * pair.Value;
-                    }
-                }
+                _enumerateGroupResult += pair.Key * pair.Value;
             }
         }
     }

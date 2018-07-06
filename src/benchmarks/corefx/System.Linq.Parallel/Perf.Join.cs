@@ -4,75 +4,75 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.Xunit.Performance;
+using BenchmarkDotNet.Attributes;
 
 namespace System.Linq.Parallel.Tests
 {
-    public sealed class JoinPerfTestsUnorderedLeftUnorderedRight : JoinPerfTests
+    public class JoinPerfTestsUnorderedLeftUnorderedRight : JoinPerfTests
     {
     }
 
-    public sealed class JoinPerfTestsUnorderedLeftOrderedRight : JoinPerfTests
+    public class JoinPerfTestsUnorderedLeftOrderedRight : JoinPerfTests
     {
         protected override ParallelQuery<int> CreateRight(int count) => base.CreateRight(count).AsOrdered();
     }
 
-    public sealed class JoinPerfTestsOrderedLeftUnorderedRight : JoinPerfTests
+    public class JoinPerfTestsOrderedLeftUnorderedRight : JoinPerfTests
     {
         protected override ParallelQuery<int> CreateLeft(int count) => base.CreateLeft(count).AsOrdered();
     }
 
-    public sealed class JoinPerfTestsShuffledOrderedLeftUnorderedRight : JoinPerfTests
+    public class JoinPerfTestsShuffledOrderedLeftUnorderedRight : JoinPerfTests
     {
         protected override ParallelQuery<int> CreateLeft(int count) => base.CreateLeft(count).OrderBy(x => x);
     }
 
-    public sealed class JoinPerfTestsOrderedLeftOrderedRight : JoinPerfTests
+    public class JoinPerfTestsOrderedLeftOrderedRight : JoinPerfTests
     {
         protected override ParallelQuery<int> CreateLeft(int count) => base.CreateLeft(count).AsOrdered();
         protected override ParallelQuery<int> CreateRight(int count) => base.CreateRight(count).AsOrdered();
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct__1000()
-        {
-            CrossProduct(1000);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct__1000))]
+        public void SetupCrossProduct__1000() => SetupCrossProductQuery(1000);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct__2000()
-        {
-            CrossProduct(2000);
-        }
+        [Benchmark]
+        public void CrossProduct__1000() => CrossProduct(CrossProductInnerIterationCount);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct_10000()
-        {
-            CrossProduct(10000);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct__2000))]
+        public void SetupCrossProduct__2000() => SetupCrossProductQuery(2000);
+
+        [Benchmark]
+        public void CrossProduct__2000() => CrossProduct(CrossProductInnerIterationCount);
+
+        [GlobalSetup(Target = nameof(CrossProduct_10000))]
+        public void SetupCrossProduct_10000() => SetupCrossProductQuery(10000);
+
+        [Benchmark]
+        public void CrossProduct_10000() => CrossProduct(CrossProductInnerIterationCount);
     }
 
-    public sealed class JoinPerfTestsShuffledOrderedLeftOrderedRight : JoinPerfTests
+    public class JoinPerfTestsShuffledOrderedLeftOrderedRight : JoinPerfTests
     {
         protected override ParallelQuery<int> CreateLeft(int count) => base.CreateLeft(count).OrderBy(x => x);
         protected override ParallelQuery<int> CreateRight(int count) => base.CreateRight(count).AsOrdered();
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct__1000()
-        {
-            CrossProduct(1000);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct__1000))]
+        public void SetupCrossProduct__1000() => SetupCrossProductQuery(1000);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct__2000()
-        {
-            CrossProduct(2000);
-        }
+        [Benchmark]
+        public void CrossProduct__1000() => CrossProduct(CrossProductInnerIterationCount);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct_10000()
-        {
-            CrossProduct(10000);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct__2000))]
+        public void SetupCrossProduct__2000() => SetupCrossProductQuery(2000);
+
+        [Benchmark]
+        public void CrossProduct__2000() => CrossProduct(CrossProductInnerIterationCount);
+
+        [GlobalSetup(Target = nameof(CrossProduct_10000))]
+        public void SetupCrossProduct_10000() => SetupCrossProductQuery(10000);
+
+        [Benchmark]
+        public void CrossProduct_10000() => CrossProduct( CrossProductInnerIterationCount);
     }
 
     public abstract class JoinPerfTests
@@ -83,96 +83,77 @@ namespace System.Linq.Parallel.Tests
         protected virtual ParallelQuery<int> CreateLeft(int count) => UnorderedSources.Default(count);
         protected virtual ParallelQuery<int> CreateRight(int count) => UnorderedSources.Default(count);
 
+        ParallelQuery<KeyValuePair<int, int>> _values ;
+
+        protected void SetupCrossProductQuery(int rightsPerLeft) => _values = CreateQuery(TotalElementCount / rightsPerLeft, rightsPerLeft);
+
         private ParallelQuery<KeyValuePair<int, int>> CreateQuery(int leftCount, int rightsPerLeft)
         {
             return CreateLeft(leftCount).Join(CreateRight(leftCount * rightsPerLeft),
                 x => x, y => y % leftCount, (x, y) => KeyValuePair.Create(x, y));
         }
 
-        [Benchmark(InnerIterationCount = 1_000_000), MeasureGCAllocations]
-        public void QueryCreation()
-        {
-            QueryCreation(10);
-        }
+        [Benchmark]
+        public void QueryCreation() => QueryCreation(10, 1_000_000);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct____10()
-        {
-            CrossProduct(10);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct____10))]
+        public void SetupCrossProduct____10() => SetupCrossProductQuery(10);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct____25()
-        {
-            CrossProduct(25);
-        }
+        [Benchmark]
+        public void CrossProduct____10() => CrossProduct(CrossProductInnerIterationCount);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct____50()
-        {
-            CrossProduct(50);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct____25))]
+        public void SetupCrossProduct____25() => SetupCrossProductQuery(25);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct___100()
-        {
-            CrossProduct(100);
-        }
+        [Benchmark]
+        public void CrossProduct____25() => CrossProduct(CrossProductInnerIterationCount);
 
-        [Benchmark(InnerIterationCount = CrossProductInnerIterationCount), MeasureGCAllocations]
-        public void CrossProduct___500()
-        {
-            CrossProduct(500);
-        }
+        [GlobalSetup(Target = nameof(CrossProduct____50))]
+        public void SetupCrossProduct____50() => SetupCrossProductQuery(50);
 
-        public void QueryCreation(int rightsPerLeft)
+        [Benchmark]
+        public void CrossProduct____50() => CrossProduct(CrossProductInnerIterationCount);
+
+        [GlobalSetup(Target = nameof(CrossProduct___100))]
+        public void SetupCrossProduct____100() => SetupCrossProductQuery(100);
+
+        [Benchmark]
+        public void CrossProduct___100() => CrossProduct(CrossProductInnerIterationCount);
+
+        [GlobalSetup(Target = nameof(CrossProduct___500))]
+        public void SetupCrossProduct____500() => SetupCrossProductQuery(500);
+
+        [Benchmark]
+        public void CrossProduct___500() => CrossProduct(CrossProductInnerIterationCount);
+
+        private void QueryCreation(int rightsPerLeft, long innerIterationCount)
         {
             Debug.Assert(TotalElementCount % rightsPerLeft == 0);
-            QueryCreation(TotalElementCount / rightsPerLeft, rightsPerLeft);
+            QueryCreation(TotalElementCount / rightsPerLeft, rightsPerLeft, innerIterationCount);
         }
 
         private static volatile ParallelQuery<KeyValuePair<int, int>> _queryCreationResult;
 
-        public void QueryCreation(int leftCount, int rightsPerLeft)
+        private void QueryCreation(int leftCount, int rightsPerLeft, long innerIterationCount)
         {
-            foreach (BenchmarkIteration iteration in Benchmark.Iterations)
+            for (int i = 0; i < innerIterationCount; i++)
             {
-                long iters = Benchmark.InnerIterationCount;
-                using (iteration.StartMeasurement())
-                {
-                    for (int i = 0; i < iters; i++)
-                    {
-                        _queryCreationResult = CreateQuery(leftCount, rightsPerLeft);
-                    }
-                }
+                _queryCreationResult = CreateQuery(leftCount, rightsPerLeft);
             }
-        }
-
-        public void CrossProduct(int rightsPerLeft)
-        {
-            Debug.Assert(TotalElementCount % rightsPerLeft == 0);
-            CrossProduct(TotalElementCount / rightsPerLeft, rightsPerLeft);
         }
 
         private static volatile int _crossProductResult;
 
-        public void CrossProduct(int leftCount, int rightsPerLeft)
+        protected void CrossProduct(long innerIterationCount)
         {
-            ParallelQuery<KeyValuePair<int, int>> values = CreateQuery(leftCount, rightsPerLeft);
+            ParallelQuery<KeyValuePair<int, int>> values = _values;
 
-            foreach (BenchmarkIteration iteration in Benchmark.Iterations)
+            for (int i = 0; i < innerIterationCount; i++)
             {
-                long iters = Benchmark.InnerIterationCount;
-                using (iteration.StartMeasurement())
+                _crossProductResult = 0;
+                foreach (KeyValuePair<int, int> pair in values)
                 {
-                    for (int i = 0; i < iters; i++)
-                    {
-                        _crossProductResult = 0;
-                        foreach (KeyValuePair<int, int> pair in values)
-                        {
-                            _crossProductResult += pair.Key * pair.Value;
-                        }
-                    }
+                    _crossProductResult += pair.Key * pair.Value;
                 }
             }
         }
