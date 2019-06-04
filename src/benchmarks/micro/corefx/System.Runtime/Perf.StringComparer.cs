@@ -1,6 +1,8 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Extensions;
 using MicroBenchmarks;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace System.Tests
 {
@@ -14,8 +16,7 @@ namespace System.Tests
         public int Count { get; set; }
 
         [Params(
-            StringComparison.Ordinal, StringComparison.OrdinalIgnoreCase,
-            StringComparison.InvariantCulture, StringComparison.InvariantCultureIgnoreCase)]
+            StringComparison.InvariantCultureIgnoreCase)]
         public StringComparison Comparison { get; set; }
 
         private string _input, _same;
@@ -35,6 +36,28 @@ namespace System.Tests
 
         [Benchmark]
         public int CompareSame() => _comparer.Compare(_input, _same);
+
+        [Benchmark]
+        public int GetStringHashCodeParallel()
+        {
+            int result = 0;
+
+            Parallel.For(0, Environment.ProcessorCount, _ =>
+            {
+                var localResult = 0;
+
+                int loopLength = Count == 128 ? 100_000 : Count == 1024 * 256 ? 100 : 10;
+
+                for (int i = 0; i < loopLength; i++)
+                {
+                    localResult ^= _comparer.GetHashCode(_input);
+                }
+
+                Interlocked.Add(ref result, localResult);
+            });
+
+            return result;
+        }
 
         private StringComparer GetStringComparer()
         {
