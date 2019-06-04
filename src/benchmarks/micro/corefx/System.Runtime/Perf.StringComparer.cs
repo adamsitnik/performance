@@ -9,14 +9,10 @@ namespace System.Tests
     [BenchmarkCategory(Categories.CoreFX, Categories.CoreCLR)]
     public class Perf_StringComparer
     {
-        [Params(
-            128, // stackalloc path
-            1024 * 256, // ArrayPool.Shared.Rent without allocation 
-            2 * 1024 * 1024)] // ArrayPool.Shared.Rent WITH allocation
+        [Params(128)] // ArrayPool.Shared.Rent WITH allocation
         public int Count { get; set; }
 
-        [Params(
-            StringComparison.InvariantCultureIgnoreCase)]
+        [Params(StringComparison.InvariantCultureIgnoreCase)]
         public StringComparison Comparison { get; set; }
 
         private string _input, _same;
@@ -38,22 +34,20 @@ namespace System.Tests
         public int CompareSame() => _comparer.Compare(_input, _same);
 
         [Benchmark]
-        public int GetStringHashCodeParallel()
+        public bool Repro()
         {
-            int result = 0;
+            bool result = false;
 
-            Parallel.For(0, Environment.ProcessorCount, _ =>
+            Parallel.For(0, Environment.ProcessorCount / 2, _ =>
             {
-                var localResult = 0;
+                bool local = true;
 
-                int loopLength = Count == 128 ? 100_000 : Count == 1024 * 256 ? 100 : 10;
-
-                for (int i = 0; i < loopLength; i++)
+                for (int i = 0; i < 10_000; i++)
                 {
-                    localResult ^= _comparer.GetHashCode(_input);
+                    local ^= _input.StartsWith(_same);
                 }
 
-                Interlocked.Add(ref result, localResult);
+                result ^= local;
             });
 
             return result;
