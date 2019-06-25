@@ -13,6 +13,7 @@
       https://dotnet.myget.org/F/symreader-converter/api/v3/index.json;
       https://dotnet.myget.org/F/symreader/api/v3/index.json;
       https://ci.appveyor.com/nuget/benchmarkdotnet;
+      https://dotnetfeed.blob.core.windows.net/aspnet-aspnetcore/index.json;
     </RestoreSources>
   </PropertyGroup>
 </Project>
