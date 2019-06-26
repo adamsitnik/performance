@@ -13,9 +13,9 @@ namespace System.Drawing.Tests
     [BenchmarkCategory(Categories.CoreFX)]
     public class Perf_Image_Load
     {
-        private static readonly ImageTestData[] TestCases = CreateTestCases();
+        private static readonly Lazy<ImageTestData[]> LazyTestCases = new Lazy<ImageTestData[]>(CreateTestCases);
 
-        public IEnumerable<object> ImageFormats() => TestCases;
+        public IEnumerable<object> ImageFormats() => LazyTestCases.Value;
 
         [Benchmark]
         [ArgumentsSource(nameof(ImageFormats))]
