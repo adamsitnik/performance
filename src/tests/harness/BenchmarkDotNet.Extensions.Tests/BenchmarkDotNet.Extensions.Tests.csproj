@@ -2,8 +2,11 @@
   <Import Project="$(MSBuildThisFileDirectory)\..\..\..\common.props" />
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <UseAppHost>true</UseAppHost>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="$(MSBuildThisFileDirectory)\..\..\..\benchmarks\micro\MicroBenchmarks.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)\..\..\..\harness\BenchmarkDotNet.Extensions\BenchmarkDotNet.Extensions.csproj" />
+    <PackageReference Include="Microsoft.Win32.Primitives" Version="4.3.0" />
+    <PackageReference Include="System.Net.Primitives" Version="4.3.0" />
   </ItemGroup>
 </Project>
