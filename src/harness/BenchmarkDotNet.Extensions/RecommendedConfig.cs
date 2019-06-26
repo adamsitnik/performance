@@ -6,6 +6,7 @@ using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters.Json;
 using BenchmarkDotNet.Horology;
 using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Toolchains.InProcess.Emit;
 
 namespace BenchmarkDotNet.Extensions
 {
@@ -18,6 +19,7 @@ namespace BenchmarkDotNet.Extensions
                     .WithIterationTime(TimeInterval.FromMilliseconds(250)) // the default is 0.5s per iteration, which is slighlty too much for us
                     .WithMinIterationCount(15)
                     .WithMaxIterationCount(20) // we don't want to run more that 20 iterations
+                    .With(InProcessEmitToolchain.DontLogOutput)
                     .AsDefault()) // tell BDN that this are our default settings
                 .WithArtifactsPath(artifactsPath.FullName)
                 .With(MemoryDiagnoser.Default) // MemoryDiagnoser is enabled by default
