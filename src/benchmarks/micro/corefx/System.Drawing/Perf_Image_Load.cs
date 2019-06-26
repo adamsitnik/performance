@@ -5,6 +5,7 @@
 using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
 using MicroBenchmarks;
 
@@ -56,7 +57,7 @@ namespace System.Drawing.Tests
                     new ImageTestData(ImageFormat.Gif)
                 };
             }
-            catch (DllNotFoundException ex) when (ex.Message.Contains("libgdiplus"))
+            catch (Exception) when (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 Console.WriteLine("Please install libgdiplus, you can do it by running 'apt-get install libgdiplus'");
 
