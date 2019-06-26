@@ -2,6 +2,7 @@
   <Import Project="$(MSBuildThisFileDirectory)\..\..\..\common.props" />
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <UseAppHost>true</UseAppHost>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(MSBuildThisFileDirectory)\..\..\..\benchmarks\micro\MicroBenchmarks.csproj" />
