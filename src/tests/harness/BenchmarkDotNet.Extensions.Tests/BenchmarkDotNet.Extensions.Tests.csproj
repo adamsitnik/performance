@@ -1,10 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
   <Import Project="$(MSBuildThisFileDirectory)\..\..\..\common.props" />
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <UseAppHost>true</UseAppHost>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="$(MSBuildThisFileDirectory)\..\..\..\benchmarks\micro\MicroBenchmarks.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)\..\..\..\harness\BenchmarkDotNet.Extensions\BenchmarkDotNet.Extensions.csproj" />
   </ItemGroup>
 </Project>
