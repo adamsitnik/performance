@@ -8,6 +8,7 @@ using System.Collections.Immutable;
 using BenchmarkDotNet.Running;
 using System.IO;
 using BenchmarkDotNet.Extensions;
+using System.Reflection;
 
 namespace MicroBenchmarks
 {
@@ -43,13 +44,26 @@ namespace MicroBenchmarks
                         partitionIndex: partitionIndex))
                     .ToExitCode();
             }
+            catch (TargetInvocationException reflectionEx)
+            {
+                return Log(reflectionEx.InnerException);
+            }
+            catch (TypeInitializationException staticCtorEx)
+            {
+                return Log(staticCtorEx.InnerException);
+            }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
-                Console.WriteLine(ex.StackTrace);
-
-                return 1;
+                return Log(ex);
             }
+        }
+
+        private static int Log(Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            Console.WriteLine(ex.StackTrace);
+
+            return 1;
         }
     }
 }
