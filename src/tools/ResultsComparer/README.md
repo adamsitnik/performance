@@ -9,9 +9,9 @@ It can be used to compare:
 * results for different target frameworks (eg. .NET Core 2.1 vs 2.2)
 
 All you need to provide is:
-* `--base` - path to folder/file with baseline results
-* `--diff` - path to folder/file with diff results
-* `--threshold`  - threshold for Statistical Test. Examples: 5%, 10ms, 100ns, 1s
+* `--base` - path(s) to folder/file with baseline results
+* `--diff` - path(s) to folder/file with diff results
+* `--threshold` - threshold for Statistical Test. Examples: 5%, 10ms, 100ns, 1s
 
 Optional arguments:
 * `--top` - filter the diff to top/bottom `N` results

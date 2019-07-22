@@ -11,11 +11,14 @@ namespace ResultsComparer
 {
     public class CommandLineOptions
     {
-        [Option("base", HelpText = "Path to the folder/file with base results.")]
-        public string BasePath { get; set; }
+        [Option("base", HelpText = "Path(s) to the folder/file with base results.")]
+        public IEnumerable<string> BasePaths { get; set; }
 
-        [Option("diff", HelpText = "Path to the folder/file with diff results.")]
-        public string DiffPath { get; set; }
+        [Option("diff", HelpText = "Path(s) to the folder/file with diff results.")]
+        public IEnumerable<string> DiffPaths { get; set; }
+
+        [Option("input", HelpText = "Path to folder with netcoreapp22* and netcoreapp30* results.")]
+        public string Input { get; set; }
 
         [Option("threshold", Required = true, HelpText = "Threshold for Statistical Test. Examples: 5%, 10ms, 100ns, 1s.")]
         public string StatisticalTestThreshold { get; set; }
@@ -26,9 +29,6 @@ namespace ResultsComparer
         [Option("top", HelpText = "Filter the diff to top/bottom N results. Optional.")]
         public int? TopCount { get; set; }
 
-        [Option("csv", HelpText = "Path to exported CSV results. Optional.")]
-        public FileInfo CsvPath { get; set; }
-
         [Option('f', "filter", HelpText = "Filter the benchmarks by name using glob pattern(s). Optional.")]
         public IEnumerable<string> Filters { get; set; }
 
@@ -38,13 +38,13 @@ namespace ResultsComparer
             get
             {
                 yield return new Example(@"Compare the results stored in 'C:\results\win' (base) vs 'C:\results\unix' (diff) using 5% threshold.",
-                    new CommandLineOptions { BasePath = @"C:\results\win", DiffPath = @"C:\results\unix", StatisticalTestThreshold = "5%" });
+                    new CommandLineOptions { BasePaths = new[] { @"C:\results\win" }, DiffPaths = new[] { @"C:\results\unix" }, StatisticalTestThreshold = "5%" });
                 yield return new Example(@"Compare the results stored in 'C:\results\win' (base) vs 'C:\results\unix' (diff) using 5% threshold and show only top/bottom 10 results.",
-                    new CommandLineOptions { BasePath = @"C:\results\win", DiffPath = @"C:\results\unix", StatisticalTestThreshold = "5%", TopCount = 10 });
+                    new CommandLineOptions { BasePaths = new[] { @"C:\results\win" }, DiffPaths = new[] { @"C:\results\unix" }, StatisticalTestThreshold = "5%", TopCount = 10 });
                 yield return new Example(@"Compare the results stored in 'C:\results\win' (base) vs 'C:\results\unix' (diff) using 5% threshold and 0.5ns noise filter.",
-                    new CommandLineOptions { BasePath = @"C:\results\win", DiffPath = @"C:\results\unix", StatisticalTestThreshold = "5%", NoiseThreshold = "0.5ns" });
+                    new CommandLineOptions { BasePaths = new[] { @"C:\results\win" }, DiffPaths = new[] { @"C:\results\unix" }, StatisticalTestThreshold = "5%", NoiseThreshold = "0.5ns" });
                 yield return new Example(@"Compare the System.Math benchmark results stored in 'C:\results\ubuntu16' (base) vs 'C:\results\ubuntu18' (diff) using 5% threshold.",
-                    new CommandLineOptions { Filters = new[] { "System.Math*" }, BasePath = @"C:\results\win", DiffPath = @"C:\results\unix", StatisticalTestThreshold = "5%" });
+                    new CommandLineOptions { Filters = new[] { "System.Math*" }, BasePaths = new[] { @"C:\results\win" }, DiffPaths = new[] { @"C:\results\unix" }, StatisticalTestThreshold = "5%" });
             }
         }
     }
