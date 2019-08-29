@@ -14,6 +14,9 @@
     - [Allocation Tracking](#Allocation-Tracking)
   - [PerfView](#PerfView)
     - [CPU Investigation](#CPU-Investigation)
+      - [Filtering](#Filtering)
+      - [Analyzing the Results](#Analyzing-the-Results)
+      - [Viewing Source Code](#Viewing-Source-Code)
 
 
 ## Prerequisites
@@ -292,6 +295,8 @@ The `Metric/Interval` is a quick measurement of how CPU bound the trace is as a 
 
 ![CPU Metric](img/perfview_7_cpu_metric.png)
 
+##### Filtering
+
 Fundamentally, what is collected by the PerfView profiler is a sequence of stacks. A stack is collected every millisecond for each hardware processor on the machine. This is very detailed information and hence by default PerfView groups the stacks. This is very useful when you are profiling a real-world application in a production environment, but when you work on the .NET Team and you profile some simple repro app you care about all details and you don't want the results to be grouped by modules.
 
 ![Group pats](img/perfview_8_grouppats_on.png)
@@ -324,4 +329,46 @@ As you can see, all the methods that were executed before the first and after la
 
 `When` - This is a visualization of how the INCLUSIVE samples collected for that node vary over time.   The total range (from the Start and End text boxes), is divided into 32 time 'TimeBuckets' and the inclusive samples for that node are accumulated into those 32 buckets.   Each bucket is then represented as a digit that represents a scaled value.
 
-This simple text representation of histogram can be very useful when profiling more complex scenarios, but in this case it just shows us that `DateTime.UtcNow` was executed all the time. But this is exactly what we wanted.
+This simple text representation of histogram can be very useful when profiling more complex scenarios, but in this case it just shows us that `DateTime.UtcNow` was executed all the time. But this is exactly what we wanted!
+
+##### Analyzing the Results
+
+Once we get the data filtered we can start the analyzis.
+
+The `By Name` tab contains the list of all methods captured during profile time. This list is by default sorted in descending order by **Exc**lusive CPU time. It means that the most expensive methods wich perform actual CPU computation are at the top of the table. These are the methods you care about.
+
+![By name tab](img/perfview_15_by_name.png)
+
+To find out who is calling the most time consuming method you can right click on it and select `Goto -> Goto Item in Callers` or just press `F10`.
+
+![Go to callers](img/perfview_16_go_to_callers.png)
+
+The `Callers` tab displays the Callers ;)
+
+![Callers](img/perfview_17_callers.png)
+
+If you wish you can  see the entire `Call Tree` by clicking on the `Call Tree` tab:
+
+![Call Tree](img/perfview_18_call_tree.png)
+
+If you prefer a different form of visualization, you can switch to the `Flame Graph` tab:
+
+![Flame Graph](img/perfview_19_flame_graph.png)
+
+The graph starts at the bottom. Each box represents a method in the stack (inclusive CPU time). Every parent is the caller, children are the callees. The wider the box, the more time it was on-CPU.
+
+For the leaf nodes the inclusive time == exclusive time.
+
+The difference between the parent and children box width (marked with red on the image below) is the exclusive parent (caller) time.
+
+![Flame Graph Exclusive time](img/perfview_20_flame_graph_exclusive_time.png)
+
+##### Viewing Source Code
+
+If you want to view the Source Code of the given method you need to right-click on it and select `Goto Source (Def)` menu item. Or just press `Alt+D`.
+
+![Goto Source](img/perfview_21_goto_source.png)
+
+![Source Code](img/perfview_22_source_code.png)
+
+If PerfView fails to show you the source code you should read the `Log` output. If you are unable to make it work and you really care about it you should switch to Visual Studio Profiler.
