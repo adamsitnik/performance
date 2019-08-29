@@ -17,6 +17,7 @@
       - [Filtering](#Filtering)
       - [Analyzing the Results](#Analyzing-the-Results)
       - [Viewing Source Code](#Viewing-Source-Code)
+      - [Identifying Regressions](#Identifying-Regressions)
 
 
 ## Prerequisites
@@ -372,3 +373,17 @@ If you want to view the Source Code of the given method you need to right-click 
 ![Source Code](img/perfview_22_source_code.png)
 
 If PerfView fails to show you the source code you should read the `Log` output. If you are unable to make it work and you really care about it you should switch to Visual Studio Profiler.
+
+##### Identifying Regressions
+
+PerfView has a built-in support for identifying regressions. To use it you need to:
+
+* profile two different versions of .NET Core running exact same C# code
+* open both trace files in PerfView and apply exactly the same filters
+* choose `Regression -> With Baseline` from the top Menu
+
+![Two trace files](img/perfview_23_regression.png)
+
+![Regression Report](img/perfview_24_regression_report.png)
+
+It's recommended to use it instead of trying to eyeball complex Flame Graphs.
