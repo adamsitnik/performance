@@ -260,7 +260,7 @@ Again, if you have configured everything properly you are able to right click on
 
 ### PerfView
 
-PerfView is the ultimate .NET Profiler and it's recommended to read it's tutorial or watch the tutorial [videos](https://channel9.msdn.com/Series/PerfView-Tutorial).
+PerfView is the ultimate .NET Profiler and if you are new to PerfView it's recommended to read it's tutorial or watch the tutorial [videos](https://channel9.msdn.com/Series/PerfView-Tutorial).
 
 ![Welcome Screen](img/perfview_0_welcome.png)
 
@@ -334,9 +334,9 @@ This simple text representation of histogram can be very useful when profiling m
 
 ##### Analyzing the Results
 
-Once we get the data filtered we can start the analyzis.
+Once we get the data filtered we can start the analysis.
 
-The `By Name` tab contains the list of all methods captured during profile time. This list is by default sorted in descending order by **Exc**lusive CPU time. It means that the most expensive methods wich perform actual CPU computation are at the top of the table. These are the methods you care about.
+The `By Name` tab contains the list of all methods captured during profile time. This list is by default sorted in descending order by **Exc**lusive CPU time. It means that the most expensive methods which perform actual CPU computation are at the top of the table. These are the methods you care about.
 
 ![By name tab](img/perfview_15_by_name.png)
 
@@ -344,23 +344,23 @@ To find out who is calling the most time consuming method you can right click on
 
 ![Go to callers](img/perfview_16_go_to_callers.png)
 
-The `Callers` tab displays the Callers ;)
-
 ![Callers](img/perfview_17_callers.png)
 
 If you wish you can  see the entire `Call Tree` by clicking on the `Call Tree` tab:
 
 ![Call Tree](img/perfview_18_call_tree.png)
 
-If you prefer a different form of visualization, you can switch to the `Flame Graph` tab:
+`Flame Graph` offers you a different form of visualization::
 
 ![Flame Graph](img/perfview_19_flame_graph.png)
 
-The graph starts at the bottom. Each box represents a method in the stack (inclusive CPU time). Every parent is the caller, children are the callees. The wider the box, the more time it was on-CPU.
+The graph starts at the bottom. Each box represents a method in the stack (inclusive CPU time). Every parent is the caller, children are the callees. The wider the box, the more time it was on-CPU. 
 
-For the leaf nodes the inclusive time == exclusive time.
+For the leaf nodes the inclusive time == exclusive time. The difference between the parent and children box width (marked with red on the image below) is the exclusive parent (caller) time.
 
-The difference between the parent and children box width (marked with red on the image below) is the exclusive parent (caller) time.
+```cs
+parent.InclusiveTime - children.InclusiveTime = parent.ExclusiveTime
+```
 
 ![Flame Graph Exclusive time](img/perfview_20_flame_graph_exclusive_time.png)
 
@@ -373,6 +373,8 @@ If you want to view the Source Code of the given method you need to right-click 
 ![Source Code](img/perfview_22_source_code.png)
 
 If PerfView fails to show you the source code you should read the `Log` output. If you are unable to make it work and you really care about it you should switch to Visual Studio Profiler.
+
+**Note:** As of today, PerfView keeps the `.pdb` files [opened](https://github.com/microsoft/perfview/pull/979) after showing the source code. It means that if you keep the trace file opened in PerfView and try to rebuild CoreFX/CLR the build is going to fail. You might need to close PerfView to rebuild CoreFX/CLR.
 
 ##### Identifying Regressions
 
