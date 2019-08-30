@@ -18,6 +18,8 @@
       - [Analyzing the Results](#Analyzing-the-Results)
       - [Viewing Source Code](#Viewing-Source-Code)
       - [Identifying Regressions](#Identifying-Regressions)
+  - [VTune](#VTune)
+    - [When to use](#When-to-use)
 
 
 ## Prerequisites
@@ -389,3 +391,160 @@ PerfView has a built-in support for identifying regressions. To use it you need 
 ![Regression Report](img/perfview_24_regression_report.png)
 
 It's recommended to use it instead of trying to eyeball complex Flame Graphs.
+
+### VTune
+
+Intel VTune is a very powerful profiler that allows for low-level profiling:
+
+* provides micro-architecture specific analysis
+* identifies hot spots and bottlenecks
+* utilizes MSRs to get additional low-level hardware information
+
+#### When to use
+
+You should start every investigation with VS Profiler or PerfView. When you get to a point where you clearly need information on CPU instruction level and you are using Intel hardware, use VTune.
+
+As an example, we can use following app that tries to reproduce [Potential regression: Dictionary of Value Types #25842 ](https://github.com/dotnet/coreclr/issues/25842):
+
+```cs
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+
+namespace ProfilingDocs
+{
+    class Program
+    {
+        const int LastElement = 512;
+
+        static void Main()
+        {
+            Dictionary<int, int> dictionary = Enumerable.Range(start: 0, count: LastElement).ToDictionary(x => x);
+
+            ActualJob(dictionary);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static bool ActualJob(Dictionary<int, int> dictionary)
+        {
+            bool result = false;
+
+            for (int i = 0; i < 3_000_000; i++)
+            {
+                for (int notFound = LastElement + 1; notFound < LastElement * 2; notFound++)
+                {
+                    result ^= dictionary.TryGetValue(notFound, out _);
+                }
+            }
+
+            return result;
+        }
+    }
+}
+```
+
+PerfView tells us that 70% of exclusive CPU time was spent in `FindEntry` method:
+
+![PerfView not is not enough](img/vtune_not_perfview.png)
+
+When we open the source code it quickly becomes obvious that we need information on CPU instruction level to find out where the time was spent exactly:
+
+```cs
+private int FindEntry(TKey key)
+{
+    if (key == null)
+    {
+        ThrowHelper.ThrowArgumentNullException(ExceptionArgument.key);
+    }
+
+    int i = -1;
+    int[]? buckets = _buckets;
+    Entry[]? entries = _entries;
+    int collisionCount = 0;
+    if (buckets != null)
+    {
+        Debug.Assert(entries != null, "expected entries to be != null");
+        IEqualityComparer<TKey>? comparer = _comparer;
+        if (comparer == null)
+        {
+            uint hashCode = (uint)key.GetHashCode();
+            // Value in _buckets is 1-based
+            i = buckets[hashCode % (uint)buckets.Length] - 1;
+            if (default(TKey)! != null) // TODO-NULLABLE: default(T) == null warning (https://github.com/dotnet/roslyn/issues/34757)
+            {
+                // ValueType: Devirtualize with EqualityComparer<TValue>.Default intrinsic
+                do
+                {
+                    // Should be a while loop https://github.com/dotnet/coreclr/issues/15476
+                    // Test in if to drop range check for following array access
+                    if ((uint)i >= (uint)entries.Length || (entries[i].hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entries[i].key, key)))
+                    {
+                        break;
+                    }
+
+                    i = entries[i].next;
+                    if (collisionCount >= entries.Length)
+                    {
+                        // The chain of entries forms a loop; which means a concurrent update has happened.
+                        // Break out of the loop and throw, rather than looping forever.
+                        ThrowHelper.ThrowInvalidOperationException_ConcurrentOperationsNotSupported();
+                    }
+                    collisionCount++;
+                } while (true);
+            }
+            else
+            {
+                // Object type: Shared Generic, EqualityComparer<TValue>.Default won't devirtualize
+                // https://github.com/dotnet/coreclr/issues/17273
+                // So cache in a local rather than get EqualityComparer per loop iteration
+                EqualityComparer<TKey> defaultComparer = EqualityComparer<TKey>.Default;
+                do
+                {
+                    // Should be a while loop https://github.com/dotnet/coreclr/issues/15476
+                    // Test in if to drop range check for following array access
+                    if ((uint)i >= (uint)entries.Length || (entries[i].hashCode == hashCode && defaultComparer.Equals(entries[i].key, key)))
+                    {
+                        break;
+                    }
+
+                    i = entries[i].next;
+                    if (collisionCount >= entries.Length)
+                    {
+                        // The chain of entries forms a loop; which means a concurrent update has happened.
+                        // Break out of the loop and throw, rather than looping forever.
+                        ThrowHelper.ThrowInvalidOperationException_ConcurrentOperationsNotSupported();
+                    }
+                    collisionCount++;
+                } while (true);
+            }
+        }
+        else
+        {
+            uint hashCode = (uint)comparer.GetHashCode(key);
+            // Value in _buckets is 1-based
+            i = buckets[hashCode % (uint)buckets.Length] - 1;
+            do
+            {
+                // Should be a while loop https://github.com/dotnet/coreclr/issues/15476
+                // Test in if to drop range check for following array access
+                if ((uint)i >= (uint)entries.Length ||
+                    (entries[i].hashCode == hashCode && comparer.Equals(entries[i].key, key)))
+                {
+                    break;
+                }
+
+                i = entries[i].next;
+                if (collisionCount >= entries.Length)
+                {
+                    // The chain of entries forms a loop; which means a concurrent update has happened.
+                    // Break out of the loop and throw, rather than looping forever.
+                    ThrowHelper.ThrowInvalidOperationException_ConcurrentOperationsNotSupported();
+                }
+                collisionCount++;
+            } while (true);
+        }
+    }
+
+    return i;
+}
+```
