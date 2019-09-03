@@ -1,7 +1,9 @@
 ﻿using BenchmarkDotNet.Attributes;
+using MicroBenchmarks;
 
 namespace System.Runtime
 {
+    [BenchmarkCategory(Categories.CoreFX)]
     public class Perf_StartsWith
     {
         [Params(1, 512, 200_000)]
