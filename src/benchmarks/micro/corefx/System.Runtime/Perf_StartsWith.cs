@@ -12,12 +12,15 @@ namespace System.Runtime
         [Params(true, false)]
         public bool Cached;
 
+        [Params(true, false)]
+        public bool EdgeCase;
+
         private string left;
 
-        private string Left => Cached ? left : string.Concat(new string('a', Length), "-");
+        private string Left => Cached ? left : EdgeCase ? string.Concat(new string('a', Length), "-") : new string('a', Length);
 
         [GlobalSetup]
-        public void Setup() => left = string.Concat(new string('a', Length), "-");
+        public void Setup() => left = EdgeCase ? string.Concat(new string('a', Length), "-") : new string('a', Length);
 
         [Benchmark]
         public bool StartsWith() => Left.StartsWith("i", StringComparison.CurrentCulture);
