@@ -20,6 +20,6 @@ namespace System.Runtime
         public void Setup() => left = string.Concat(new string('a', Length), "-");
 
         [Benchmark]
-        public bool StartsWith() => Left.StartsWith("i", StringComparison.Ordinal);
+        public bool StartsWith() => Left.StartsWith("i", StringComparison.CurrentCulture);
     }
 }
