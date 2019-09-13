@@ -1,5 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using MicroBenchmarks;
+using System.Globalization;
+using System.Threading;
 
 namespace System.Runtime
 {
@@ -9,20 +11,31 @@ namespace System.Runtime
         [Params(1, 512, 200_000)]
         public int Length;
 
-        [Params(true, false)]
-        public bool Cached;
-
-        [Params(true, false)]
-        public bool EdgeCase;
-
-        private string left;
-
-        private string Left => Cached ? left : EdgeCase ? string.Concat(new string('a', Length), "-") : new string('a', Length);
+        private string text;
+        private string patternDiffAtLastChar;
+        private string same;
 
         [GlobalSetup]
-        public void Setup() => left = EdgeCase ? string.Concat(new string('a', Length), "-") : new string('a', Length);
+        public void Setup()
+        {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+
+            text = new string('a', Length);
+
+            var copy = text.ToCharArray();
+            same = new string(copy);
+
+            copy[copy.Length - 1] = (char)(copy[copy.Length - 1] + 1);
+            patternDiffAtLastChar = new string(copy);
+        }
 
         [Benchmark]
-        public bool StartsWith() => Left.StartsWith("i", StringComparison.CurrentCulture);
+        public bool StartsWith_DiffAtFirstChar() => text.StartsWith("i");
+
+        [Benchmark]
+        public bool StartsWith_Same() => text.StartsWith(same);
+
+        [Benchmark]
+        public bool StartsWith_DiffAtLastChar() => text.StartsWith(patternDiffAtLastChar);
     }
 }
