@@ -8,6 +8,9 @@ using System.Collections.Immutable;
 using BenchmarkDotNet.Running;
 using System.IO;
 using BenchmarkDotNet.Extensions;
+using BenchmarkDotNet.Attributes;
+using System.Threading;
+using MicroBenchmarks;
 
 namespace MicroBenchmarks
 {
@@ -41,5 +44,15 @@ namespace MicroBenchmarks
                     partitionIndex: partitionIndex))
                 .ToExitCode();
         }
+    }
+}
+
+namespace Hacky
+{
+    [BenchmarkCategory(Categories.CoreFX)]
+    public class Hack
+    {
+        [Benchmark]
+        public void InvokedInstead() { GC.Collect(); Thread.Sleep(1); }
     }
 }
