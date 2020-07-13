@@ -35,12 +35,6 @@ namespace System.Runtime.InteropServices
         [Benchmark]
         public bool IsOSPlatform_False() => RuntimeInformation.IsOSPlatform(_notCurrent);
 
-        [Benchmark]
-        public Architecture OSArchitecture() => RuntimeInformation.OSArchitecture;
-
-        [Benchmark]
-        public Architecture ProcessArchitecture() => RuntimeInformation.ProcessArchitecture;
-
-        // FrameworkDescription and OSDescription are not benchmarked as they're just simple getters that return field value
+        // OSArchitecture, ProcessArchitecture, FrameworkDescription and OSDescription are not benchmarked as they're just simple getters that return field value
     }
 }
