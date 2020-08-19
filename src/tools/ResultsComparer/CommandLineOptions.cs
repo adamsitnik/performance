@@ -17,7 +17,7 @@ namespace ResultsComparer
         [Option("diff", HelpText = "Path(s) to the folder/file with diff results.")]
         public IEnumerable<string> DiffPaths { get; set; }
 
-        [Option("input", HelpText = "Path to folder with netcoreapp22* and netcoreapp30* results.")]
+        [Option("input", HelpText = "Path to folder with netcoreapp31* and netcoreapp50* results.")]
         public string Input { get; set; }
 
         [Option("threshold", Required = true, HelpText = "Threshold for Statistical Test. Examples: 5%, 10ms, 100ns, 1s.")]

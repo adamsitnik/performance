@@ -52,13 +52,13 @@ namespace ResultsComparer
             {
                 var basePaths = new List<string>();
                 var diffPaths = new List<string>();
-                foreach (var netcoreapp22Folder in Directory.GetDirectories(args.Input, "netcoreapp22*"))
+                foreach (var netcoreapp31Folder in Directory.GetDirectories(args.Input, "netcoreapp31*"))
                 {
-                    var netcoreapp30Folder = netcoreapp22Folder.Replace("netcoreapp22", "netcoreapp30");
-                    if (Directory.Exists(netcoreapp30Folder))
+                    var netcoreapp50Folder = netcoreapp31Folder.Replace("netcoreapp31", "netcoreapp50");
+                    if (Directory.Exists(netcoreapp50Folder))
                     {
-                        basePaths.Add(netcoreapp22Folder);
-                        diffPaths.Add(netcoreapp30Folder);
+                        basePaths.Add(netcoreapp31Folder);
+                        diffPaths.Add(netcoreapp50Folder);
                     }
                 }
 
