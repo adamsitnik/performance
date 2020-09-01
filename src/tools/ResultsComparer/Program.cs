@@ -86,7 +86,7 @@ namespace ResultsComparer
                 Console.WriteLine();
 
                 var data = benchmarkResults
-                    .OrderByDescending(result => Importance(result.baseEnv))
+                    .OrderBy(result => Importance(result.baseEnv))
                     .Select(result => new
                     {
                         Conclusin = result.conclusion,
@@ -206,17 +206,45 @@ namespace ResultsComparer
             }
         }
 
-        private static int Importance(HostEnvironmentInfo baseEnv)
+        private static int Importance(HostEnvironmentInfo env)
         {
-            int score = baseEnv.Architecture == "64bit" ? 2 : 1;
+            // it's not any kind of official Microsoft priority, just the way I see them:
+            // 1. x64 Windows
+            // 2. x64 Linux
+            // 3. arm64 Linux
+            // 4. arm64 Windows
+            // 5. x86 Windows
+            // 6. arm Windows
+            // 7. x64 macOS
 
-            if (!baseEnv.ProcessorName.StartsWith("ARM", StringComparison.OrdinalIgnoreCase))
-                score *= 2;
-
-            if (baseEnv.OsVersion.StartsWith("Windows", StringComparison.OrdinalIgnoreCase))
-                score *= 2;
-
-            return score;
+            if (env.Architecture == "X64" && env.OsVersion.StartsWith("Windows", StringComparison.OrdinalIgnoreCase))
+            {
+                return 1;
+            }
+            else if (env.Architecture == "X64" && !env.OsVersion.StartsWith("macOS", StringComparison.OrdinalIgnoreCase))
+            {
+                return 2;
+            }
+            else if (env.Architecture == "Arm64" && !env.OsVersion.StartsWith("Windows", StringComparison.OrdinalIgnoreCase))
+            {
+                return 3;
+            }
+            else if (env.Architecture == "Arm64")
+            {
+                return 4;
+            }
+            else if (env.Architecture == "X86")
+            {
+                return 5;
+            }
+            else if (env.Architecture == "Arm")
+            {
+                return 6;
+            }
+            else
+            {
+                return 7;
+            }
         }
 
         private static string Simplify(string text) => text.Split('(')[0];
