@@ -73,6 +73,11 @@ namespace ResultsComparer
             Console.WriteLine($"* Statistical Test threshold: {testThreshold}, the noise filter: {noiseThreshold}");
             Console.WriteLine("* Base is Median Base in nanoseconds");
             Console.WriteLine("* Diff is Median Diff in nanoseconds");
+            Console.WriteLine("* Result is conslusion: Slower|Faster|Same");
+            Console.WriteLine("* Base is median base execution time in nanoseconds");
+            Console.WriteLine("* Diff is median diff execution time in nanoseconds");
+            Console.WriteLine("* Ratio = Base/Diff (the higher the better)");
+            Console.WriteLine("* Alloc Delta = Allocated bytes diff - Allocated bytes base (the lower the better)");
             Console.WriteLine();
             
             foreach(var benchmarkResults in args.BasePaths
@@ -89,10 +94,11 @@ namespace ResultsComparer
                     .OrderBy(result => Importance(result.baseEnv))
                     .Select(result => new
                     {
-                        Conclusin = result.conclusion,
+                        Conclusion = result.conclusion,
                         BaseMedian = result.baseResult.Statistics.Median,
                         DiffMedian = result.diffResult.Statistics.Median,
                         Ratio = result.baseResult.Statistics.Median / result.diffResult.Statistics.Median,
+                        AllocatedDiff = (result.diffResult.Memory.BytesAllocatedPerOperation - result.baseResult.Memory.BytesAllocatedPerOperation).ToString("+0;-#"),
                         Modality = GetModalInfo(result.baseResult) ?? GetModalInfo(result.diffResult),
                         OperatingSystem = Simplify(result.baseEnv.OsVersion),
                         Architecture = result.baseEnv.Architecture,
@@ -102,7 +108,7 @@ namespace ResultsComparer
                     })
                     .ToArray();
 
-                var table = data.ToMarkdownTable().WithHeaders("Conclusion", "Base", "Diff", "Base/Diff", "Modality", "Operating System", "Bit", "Processor Name", "Base Runtime", "Diff Runtime" );
+                var table = data.ToMarkdownTable().WithHeaders("Result", "Base", "Diff", "Ratio", "Alloc Delta", "Modality", "Operating System", "Bit", "Processor Name", "Base Runtime", "Diff Runtime");
 
                 foreach (var line in table.ToMarkdown().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
                     Console.WriteLine($"| {line.TrimStart()}|"); // the table starts with \t and does not end with '|' and it looks bad so we fix it
