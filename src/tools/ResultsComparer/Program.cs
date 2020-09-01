@@ -71,13 +71,13 @@ namespace ResultsComparer
             Console.WriteLine("# Legend");
             Console.WriteLine();
             Console.WriteLine($"* Statistical Test threshold: {testThreshold}, the noise filter: {noiseThreshold}");
-            Console.WriteLine("* Base is Median Base in nanoseconds");
-            Console.WriteLine("* Diff is Median Diff in nanoseconds");
             Console.WriteLine("* Result is conslusion: Slower|Faster|Same");
             Console.WriteLine("* Base is median base execution time in nanoseconds");
             Console.WriteLine("* Diff is median diff execution time in nanoseconds");
             Console.WriteLine("* Ratio = Base/Diff (the higher the better)");
             Console.WriteLine("* Alloc Delta = Allocated bytes diff - Allocated bytes base (the lower the better)");
+            Console.WriteLine("* Base V = Base Runtime Version");
+            Console.WriteLine("* Diff V = Diff Runtime Version");
             Console.WriteLine();
             
             foreach(var benchmarkResults in args.BasePaths
@@ -103,12 +103,12 @@ namespace ResultsComparer
                         OperatingSystem = Simplify(result.baseEnv.OsVersion),
                         Architecture = result.baseEnv.Architecture,
                         ProcessorName = result.baseEnv.ProcessorName,
-                        BaseRuntimeVersion = Simplify(result.baseEnv.RuntimeVersion),
-                        DiffRuntimeVersion = Simplify(result.diffEnv.RuntimeVersion),
+                        BaseRuntimeVersion = GetSimplifiedRuntimeVersion(result.baseEnv.RuntimeVersion),
+                        DiffRuntimeVersion = GetSimplifiedRuntimeVersion(result.diffEnv.RuntimeVersion),
                     })
                     .ToArray();
 
-                var table = data.ToMarkdownTable().WithHeaders("Result", "Base", "Diff", "Ratio", "Alloc Delta", "Modality", "Operating System", "Bit", "Processor Name", "Base Runtime", "Diff Runtime");
+                var table = data.ToMarkdownTable().WithHeaders("Result", "Base", "Diff", "Ratio", "Alloc Delta", "Modality", "Operating System", "Bit", "Processor Name", "Base V", "Diff V");
 
                 foreach (var line in table.ToMarkdown().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
                     Console.WriteLine($"| {line.TrimStart()}|"); // the table starts with \t and does not end with '|' and it looks bad so we fix it
@@ -254,6 +254,26 @@ namespace ResultsComparer
         }
 
         private static string Simplify(string text) => text.Split('(')[0];
+
+        private static string GetSimplifiedRuntimeVersion(string text)
+        {
+            if (text.StartsWith(".NET Core 3", StringComparison.OrdinalIgnoreCase))
+            {
+                // it's something like ".NET Core 3.1.6 (CoreCLR 4.700.20.26901, CoreFX 4.700.20.31603)"
+                // and what we care about is "3.1.6"
+                return text.Substring(".NET Core ".Length, "3.1.X".Length);
+            }
+            else if (text.StartsWith(".NET Core 5.0.0 (CoreCLR ", StringComparison.OrdinalIgnoreCase))
+            {
+                // it's something like ".NET Core 5.0.0 (CoreCLR 5.0.20.41714, CoreFX 5.0.20.41714)"
+                // and what we care about is "5.0.20.41714"
+                return text.Substring(".NET Core 5.0.0 (CoreCLR ".Length, "5.0.20.41714".Length);
+            }
+            else
+            {
+                throw new NotSupportedException($"'{text}' is not supported Runtime version");
+            }
+        }
 
         // code and magic values taken from BenchmarkDotNet.Analysers.MultimodalDistributionAnalyzer
         // See http://www.brendangregg.com/FrequencyTrails/modes.html
