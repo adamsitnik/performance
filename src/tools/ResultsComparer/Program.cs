@@ -83,9 +83,10 @@ namespace ResultsComparer
             foreach(var benchmarkResults in args.BasePaths
                 .SelectMany((basePath, index) => GetResults(basePath, args.DiffPaths.ElementAt(index), testThreshold, noiseThreshold, filters))
                 .GroupBy(result => result.id, StringComparer.InvariantCulture)
+                //.Where(group => group.Any(result => result.conclusion == EquivalenceTestConclusion.Slower))
                 //.Where(group => !group.All(result => result.conclusion == EquivalenceTestConclusion.Same || result.conclusion == EquivalenceTestConclusion.Base)) // we are not interested in things that did not change
                 .Take(args.TopCount ?? int.MaxValue)
-                .OrderBy(group => group.Average(result => Score(result.conclusion, result.baseResult, result.diffResult))))
+                .OrderBy(group => group.Sum(result => Score(result.conclusion, result.baseEnv, result.baseResult, result.diffResult))))
             {
                 Console.WriteLine($"## {benchmarkResults.Key}");
                 Console.WriteLine();
@@ -200,15 +201,25 @@ namespace ResultsComparer
                 throw new FileNotFoundException($"Provided path does NOT exist or is not a {path} file", path);
         }
 
-        private static double Score(EquivalenceTestConclusion conclusion, Benchmark baseResult, Benchmark diffResult)
+        private static double Score(EquivalenceTestConclusion conclusion, HostEnvironmentInfo env, Benchmark baseResult, Benchmark diffResult)
         {
             switch (conclusion)
             {
                 case EquivalenceTestConclusion.Base:
                 case EquivalenceTestConclusion.Same:
-                    return 1.0;
+                    return 0;
+                case EquivalenceTestConclusion.Faster:
+                    double improvementXtimes = baseResult.Statistics.Median / diffResult.Statistics.Median;
+                    return (double.IsNaN(improvementXtimes) || double.IsInfinity(improvementXtimes))
+                        ? Importance(env) * 10.0
+                        : Importance(env) * Math.Min(improvementXtimes, 10.0);
+                case EquivalenceTestConclusion.Slower:
+                    double regressionXtimes = diffResult.Statistics.Median / baseResult.Statistics.Median;
+                    return (double.IsNaN(regressionXtimes) || double.IsInfinity(regressionXtimes))
+                        ? Importance(env) * -10.0
+                        : Importance(env) * Math.Min(regressionXtimes, 10.0) * -1.0;
                 default:
-                    return baseResult.Statistics.Median / diffResult.Statistics.Median;
+                    throw new NotSupportedException($"{conclusion} is not supported");
             }
         }
 
