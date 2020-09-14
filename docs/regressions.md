@@ -31,7 +31,7 @@ If the historical data shows that there is no regression, you can just close the
 
 # Repro
 
-The next step is to reproduce the regression locally. The most convenient way to do it is by using the [benchmarks_ci.py](../../scripts/benchmarks_ci.py)
+The next step is to reproduce the regression locally. The most convenient way to do it is by using the [benchmarks_ci.py](../scripts/benchmarks_ci.py)
  script using the command provided in the reported issue.
  
  
