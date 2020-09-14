@@ -29,5 +29,28 @@ For others, it might not be clear whether there is a regression or the benchmark
 
 If the historical data shows that there is no regression, you can just close the issue and explain it. The more mature the system becomes, the less frequent it should be.
 
+# Repro
 
+The next step is to reproduce the regression locally. The most convenient way to do it is by using the [benchmarks_ci.py](../../scripts/benchmarks_ci.py)
+ script using the command provided in the reported issue.
+ 
+ 
+```cmd
+git clone https://github.com/dotnet/performance.git
+# For Windows
+py .\performance\scripts\benchmarks_ci.py -f netcoreappX netcoreappY --filter '$yourFilter*'
+# For Unix systems
+python3 ./performance/scripts/benchmarks_ci.py -f netcoreappX netcoreappY --filter '$yourFilter*'
+```
 
+The script downloads the latest .NET SDK for given framework moniker(s) and runs the benchmark(s) that match the provided filter. You can read more about filtering [here](benchmarkdotnet.md#Filtering-the-Benchmarks).
+
+Few important things:
+
+* [python 3.5](prerequisites.md) or newer needs to be installed and added to `PATH`.
+* The script ignores the current environment variables and starts the process with no environment variables.
+* By default, the `x64` architecture is used. If the issue mentions a different architecture, you need to provide it in an explicit way via `--architecture arm64|arm|x86`.
+* On Unix systems, you need to:
+	* use python**3** in an explicit way. Otherwise, you might get a very vague syntax error from python **2**.
+	* escape the asterisks provided to the filter `'*'`. If you don't, the OS is going to replace `*` with the names of files in your current folder and you won't run any benchmarks.
+ 
