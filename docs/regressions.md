@@ -11,11 +11,13 @@
 
 Before you start any performance investigation, you need to open the issue, click on the link that leads to the full historical data, and evaluate the data.
 
-For some reports, it will be obvious to you that there is a regression ([source](https://github.com/DrewScoggins/performance-2/issues/910)):
+In most of the cases, it's obvious that there is a regression ([source](https://github.com/DrewScoggins/performance-2/issues/910)):
 
 ![Ovious regression](img/regressions_obvious.png)
 
-For some, it'll be clear that the benchmark is simply multimodal (bimodal in the examples below [1](https://github.com/DrewScoggins/performance-2/issues/1683), [2](https://github.com/DrewScoggins/performance-2/issues/1379), [3](https://github.com/DrewScoggins/performance-2/issues/1378)) and there is no regression:
+And you just continue to the [next step](#Repro).
+
+But some benchmarks are simply multimodal (bimodal in the examples below [1](https://github.com/DrewScoggins/performance-2/issues/1683), [2](https://github.com/DrewScoggins/performance-2/issues/1379), [3](https://github.com/DrewScoggins/performance-2/issues/1378)) and there is no regression:
 
 ![Bimodal benchmark, no actual regression](img/regressions_bimodal.png)
 
@@ -23,11 +25,19 @@ For some, it'll be clear that the benchmark is simply multimodal (bimodal in the
 
 ![Bimodal benchmark, no actual regression](img/regressions_bimodal_3.png)
 
-For others, it might not be clear whether there is a regression or the benchmark is simply unstable as in the following [example](https://github.com/DrewScoggins/performance-2/issues/1253):
+**If the historical data shows that there is no regression, you can just close the issue and explain it**. The more mature the system becomes, the less frequent it should be.
+
+Some benchmarks can be unstable like in [this example](https://github.com/DrewScoggins/performance-2/issues/759):
+
+![Unstable](img/regressions_unstable.png)
+
+**If the benchmark is unstable and it measures something from an area that you [own](https://github.com/dotnet/runtime/blob/master/docs/area-owners.md), you should investigate why and most probably rewrite it.**
+
+Last but not least, it might not be clear whether there is a regression or not, like in the following [example](https://github.com/DrewScoggins/performance-2/issues/1253):
 
 ![Not sure](img/regressions_notsure.png)
 
-If the historical data shows that there is no regression, you can just close the issue and explain it. The more mature the system becomes, the less frequent it should be.
+Is such cases, you should estimate how important could be such a regression and decide whether you want to investigate it or not. You should always focus on the obvious regressions first, as they are very often caused by a problem that affects many other benchmarks. Fixing it might simply close few issues at once.
 
 # Repro
 
