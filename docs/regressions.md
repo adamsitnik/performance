@@ -14,13 +14,12 @@
 
 **This doc explains how to investigate regressions reported in the [dotnet/runtime](https://github.com/dotnet/runtime) repository and it's targetted at [dotnet/runtime](https://github.com/dotnet/runtime) repository contributors.**
 
-Before you start any performance investigation, you need to open the issue, click on the link that leads to the full historical data, and evaluate the data.
+Before you start any performance investigation, you need to open the issue with regression report, click on the link that leads to the full historical data, and evaluate the data.
 
-In most of the cases, it's obvious that there is a regression ([example](https://github.com/DrewScoggins/performance-2/issues/910)):
+In most of the cases, it's obvious that there is a regression (see the [example](https://github.com/DrewScoggins/performance-2/issues/910) below) and you just continue to the [next step](#Repro).
 
 ![Ovious regression](img/regressions_obvious.png)
 
-And you just continue to the [next step](#Repro).
 
 But some benchmarks are multimodal (bimodal in the examples below [1](https://github.com/DrewScoggins/performance-2/issues/1683), [2](https://github.com/DrewScoggins/performance-2/issues/1379), [3](https://github.com/DrewScoggins/performance-2/issues/1378)) and there is no regression:
 
@@ -30,7 +29,8 @@ But some benchmarks are multimodal (bimodal in the examples below [1](https://gi
 
 ![Bimodal benchmark, no actual regression](img/regressions_bimodal_3.png)
 
-**If the historical data shows that there is no regression, you can just close the issue and explain it**. The more mature the system becomes, the less frequent it should be.
+**If the historical data shows that there is no regression, you can just close the issue and provide a comment with an explanation**.
+The more mature the system becomes, the less frequent false positives should be.
 
 Some benchmarks can be unstable like in [this example](https://github.com/DrewScoggins/performance-2/issues/759):
 
@@ -49,7 +49,7 @@ Is such cases, you should estimate how important could be such a regression and 
 # Repro
 
 The next step is to reproduce the regression locally. The most convenient way to do it is by using the [benchmarks_ci.py](../scripts/benchmarks_ci.py)
- script using the command provided in the reported issue.
+ script with the arguments provided in the reported issue.
  
  
 ```cmd
@@ -73,11 +73,11 @@ Few important things:
 
 If you can't reproduce the problem locally, you need to double-check that you are using the exact same architecture and OS.
 
-If you've ensured that you are using the right config and you still can't repo the problem, you can need to diff the disassembly. If there is no diff, you can close the issue. Please don't forget to include the exported disassembly 
+If you've ensured that you are using the right config and you still can't repo the problem, you should diff the disassembly. If there is no difference, you can close the issue. Please don't forget to include the exported disassembly 
 
 # Disassembly
 
-Using the disassembly can be very useful for nano-benchmarks (time reported by BenchmarkDotNet is printed in nanoseconds). But before we take a look at some `ASM`, let's find out how to get disassembly first.
+Using the disassembly can be very useful for nano-benchmarks (time reported by BenchmarkDotNet is less than one microsecond). But before we take a look at some `ASM`, let's find out how to get disassembly first.
 
 ## DisassemblyDiagnoser
 
@@ -97,7 +97,7 @@ Example:
 benchmarks_ci.py --bdn-arguments "--disasm true disasmDepth 3"
 ```
 
-By default, the `DisassemblyDiagnoser` does not show the addresses of the instructions. It's possible to enable it, but only from the [code level](../src/harness/BenchmarkDotNet.Extensions/RecommendedConfig.cs):
+**Note:** By default, the `DisassemblyDiagnoser` does not show the **addresses of the instructions**. It's possible to enable it, but only from the [code level](../src/harness/BenchmarkDotNet.Extensions/RecommendedConfig.cs):
 
 ```cs
 .AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(printInstructionAddresses: true)))
@@ -109,41 +109,11 @@ JitDump is the most powerfull .NET Core disassembler. It's also the only disasse
 
 There are two ways of using it with BenchmarkDotNet.
 
-### InProcessToolchain
-
-By default BenchmarkDotNet runs every benchmark in a standalone process. But it's possible to run the benchmarks in the same process. As long as they don't have any side-effects (allocating memory, creating threads etc) it *should be fine*.
-
-* follow the steps described [here](https://github.com/dotnet/runtime/blob/master/docs/design/coreclr/jit/viewing-jit-dumps.md#setting-up-our-environment) for [MicroBenchmarks.csproj](../src/benchmarks/micro/MicroBenchmarks.csproj) project
-* the [src/benchmarks/micro](../src/benchmarks/micro/) folder contains a solution file and a project file named `MicroBenchmarks`. To publish a self-contained version of the project you need to specify the **path to project file** in explicit way. If you don't it's going to try to publish all projects from the [solution file](../src/benchmarks/micro/MicroBenchmarks.sln) and fail!
-
-```cmd
-# make sure that the local copy of dotnet.exe is used (not the default version from your $PATH)
-set DOTNET_MULTILEVEL_LOOKUP=0
-# publish a self-contained version in Release using dotnet downloaded by the python script
-.\performance\tools\dotnet\x64\dotnet.exe publish .\performance\src\benchmarks\micro\MicroBenchmarks.csproj \\
- -c Release -f netcoreapp5.0 --self-contained -r win-x64
-# copy the files
-robocopy /e .\runtime\artifacts\bin\coreclr\Windows_NT.x64.Release .\performance\artifacts\bin\MicroBenchmarks\Release\netcoreapp5.0\win-x64\publish
-# copy the most important file = "clrjit.dll"
-copy /y .\runtime\artifacts\bin\coreclr\Windows_NT.x64.Checked\clrjit.dll .\performance\artifacts\bin\MicroBenchmarks\Release\netcoreapp5.0\win-x64\publish\
-```
-
-* and when running a self-contained version of `MicroBenchmarks` app force BenchmarkDotNet to use the [InProcessToolchain](https://benchmarkdotnet.org/articles/configs/toolchains.html#sample-introinprocess) by passing `--inProcess` or just `-i`.
-
-```cmd
-# set the COMPlus_JitDump env var to filter the disasm
-set COMPlus_JitDump=namespace.typeName:methoName
-
-.\performance\artifacts\bin\MicroBenchmarks\Release\netcoreapp5.0\win-x64\publish\MicroBenchmarks.exe \\ 
- --inProcess \\
- --filter namespace.typeName.methodName
-```
-
 ### CoreRunToolchain
 
 When working with local builds of .NET Core it's [recommended](benchmarking-workflow-dotnet-runtime.md) to use [CoreRun](benchmarkdotnet.md#CoreRun) to run the benchmarks against a local build of .NET Core.
 
-To combine the powers of `ClrJit`, `CoreRun` and `BenchmarkDotNet` you need to copy `clrjit.dll` into CoreRun's folder (**Checked -> Release**):
+To combine the powers of `ClrJit`, `CoreRun` and `BenchmarkDotNet` you need to copy a `checked` version of `clrjit.dll` into `Release` CoreRun's folder (**Checked -> Release**):
 
 ```cmd
 copy /y ".\runtime\artifacts\bin\coreclr\Windows_NT.x64.Checked\clrjit.dll" \\
@@ -160,5 +130,35 @@ py .\performance\scripts\benchmarks_ci.py -f netcoreapp5.0 \\
 ```
 
 **Note:** to disable Tiered JIT (otherwise you get Tier 0 code) you can pass `--dotnet-compilation-mode NoTiering` to the python script.
+
+### InProcessToolchain
+
+By default BenchmarkDotNet runs every benchmark in a standalone process. But it's possible to run the benchmarks in the same process. As long as they don't have any side-effects (allocating memory, creating threads etc) it *should be fine*.
+
+* follow the steps described [here](https://github.com/dotnet/runtime/blob/master/docs/design/coreclr/jit/viewing-jit-dumps.md#setting-up-our-environment) for [MicroBenchmarks.csproj](../src/benchmarks/micro/MicroBenchmarks.csproj) project
+* the [src/benchmarks/micro](../src/benchmarks/micro/) folder contains a solution file and a project file named `MicroBenchmarks`. To publish a self-contained version of the project you need to specify the **path to project file** in explicit way. If you don't it's going to try to publish all projects from the [solution file](../src/benchmarks/micro/MicroBenchmarks.sln) and fail!
+
+```cmd
+# make sure that the local copy of dotnet is used (not the default version from your PATH)
+set DOTNET_MULTILEVEL_LOOKUP=0
+# publish a self-contained version in Release using dotnet downloaded by the python script
+.\performance\tools\dotnet\x64\dotnet.exe publish .\performance\src\benchmarks\micro\MicroBenchmarks.csproj \\
+ -c Release -f netcoreapp5.0 --self-contained -r win-x64
+# copy the files
+robocopy /e .\runtime\artifacts\bin\coreclr\Windows_NT.x64.Release .\performance\artifacts\bin\MicroBenchmarks\Release\netcoreapp5.0\win-x64\publish
+# copy a checked version of "clrjit.dll" (the most important file)
+copy /y .\runtime\artifacts\bin\coreclr\Windows_NT.x64.Checked\clrjit.dll .\performance\artifacts\bin\MicroBenchmarks\Release\netcoreapp5.0\win-x64\publish\
+```
+
+* and when running a self-contained version of `MicroBenchmarks` app force BenchmarkDotNet to use the [InProcessToolchain](https://benchmarkdotnet.org/articles/configs/toolchains.html#sample-introinprocess) by passing `--inProcess` or just `-i`.
+
+```cmd
+# set the COMPlus_JitDump env var to filter the disasm
+set COMPlus_JitDump=namespace.typeName:methoName
+
+.\performance\artifacts\bin\MicroBenchmarks\Release\netcoreapp5.0\win-x64\publish\MicroBenchmarks.exe \\ 
+ --inProcess \\
+ --filter namespace.typeName.methodName
+```
 
 
