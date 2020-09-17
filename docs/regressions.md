@@ -330,6 +330,30 @@ In this particular example using my machine I am getting values oscilating betwe
 
 The best thing you can do is to **make sure that the produced assembly code has not changed and just close the issue**. If you want to be 100% sure you can handcraft a modified version of the benchmark that allocates an aligned array, pins it and reuses for all benchmarking iterations. If you want to go deeper than that, you need to use a specialized profiler like [VTune](profiling-workflow-dotnet-runtime.md#VTune) or [uProf](profiling-workflow-dotnet-runtime.md#uProf).
 
+<details>
+
+```cs
+private static T[] AllocateAlignedArray<T>(int size, out GCHandle pinnedArrayHandle)
+{
+    while (true)
+    {
+        T[] result = new T[size];
+        pinnedArrayHandle = GCHandle.Alloc(result, GCHandleType.Pinned);
+
+        if ((long)pinnedArrayHandle.AddrOfPinnedObject() % 32 == 0)
+        {
+            return result;
+        }
+        else
+        {
+            pinnedArrayHandle.Free();
+        }
+    }
+}
+```
+
+</details>
+
 
 #### Code Alignment
 
