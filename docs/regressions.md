@@ -9,6 +9,7 @@
   - [JitDump](#JitDump)
     - [InProcessToolchain](#InProcessToolchain)
     - [CoreRunToolchain](#CoreRunToolchain)
+  - [Analysis](#Analysis)
 
 # Introduction
 
@@ -120,6 +121,8 @@ copy /y ".\runtime\artifacts\bin\coreclr\Windows_NT.x64.Checked\clrjit.dll" \\
  ".\runtime\artifacts\bin\testhost\net5.0-Windows_NT-Release-x64\shared\Microsoft.NETCore.App\6.0.0\"
 ```
 
+**Note:** You might need to do it every time after you rebuild the product.
+
 And then tell BenchmarkDotNet to use it to run the benchmarks with appropriate environment variables:
 
 ```cmd
@@ -127,9 +130,17 @@ py .\performance\scripts\benchmarks_ci.py -f netcoreapp5.0 \\
 --corerun .\runtime\artifacts\bin\testhost\net5.0-Windows_NT-Release-x64\shared\Microsoft.NETCore.App\6.0.0\CoreRun.exe 
 --bdn-arguments "--envVars COMPlus_JitDump:$value"
 --filter $yourFilter
+--dotnet-compilation-mode NoTiering
 ```
 
-**Note:** to disable Tiered JIT (otherwise you get Tier 0 code) you can pass `--dotnet-compilation-mode NoTiering` to the python script.
+**Note:** to disable Tiered JIT (otherwise you get Tier 0 code) you need tp pass `--dotnet-compilation-mode NoTiering` to the python script (or the right thing to `--envVars`).
+
+**Note:** The filter accepted by `COMPlus_JitDump` uses `:` (colon) to separate type and method names. The filter accepted by BDN uses dots only.
+
+```cmd
+--filter Burgers.Test0
+--envVars COMPlus_JitDump:Burgers:Test0
+```
 
 ### InProcessToolchain
 
@@ -161,4 +172,164 @@ set COMPlus_JitDump=namespace.typeName:methoName
  --filter namespace.typeName.methodName
 ```
 
+
+## Analysis
+
+Analyzing the assembly code is a non-trivial skill and the goal of this doc is definitely not to try to teach you that. There are some common recurring patterns and we are going to focus only on these.
+
+### The managed implementation was changed and the produced assembly code has changed as well
+
+If the C# source code became:
+
+* more complex to solve a different problem (like added a few `if` statements to fix a bug):
+  * if it's an important code path you should optimize it or ask for help if you don't know how to do it (**it's perfectly fine to not know all C# perf tricks!!**).
+  * if it can not be optimized or it's not worth it, you should close the issue and explain why it's a by-design regression.
+* simpler, but the produced assembly code has gotten worse you should label the issue as `area-CodeGen-coreclr` and tag @dotnet/jit-contrib to get help. Depending on the complexity of the problem and the judgment of the JIT Team the problem might get fixed on the JIT side or given change might be simply reverted.
+
+### The managed implementation was **not** changed, but the produced assembly code has changed
+
+It's most probably caused by changes in the JIT. You should label the issue as `area-CodeGen-coreclr` and tag @dotnet/jit-contrib to get help.
+
+An [example](https://github.com/dotnet/runtime/issues/41738) of such issue where `System.Numerics.Quaternion.Conjugate(System.Numerics.Quaternion)` stopped being inlined:
+
+<table>
+<tr>
+<th>
+.NET Core 3.1.6
+</th>
+<th>
+.NET Core 5.0.20.41714
+</th>
+</tr>
+<tr>
+<td style="vertical-align: top">
+<pre>
+; System.Numerics.Tests.Perf_Quaternion.ConjugateBenchmark()
+       sub       rsp,18
+       vzeroupper
+       lea       rax,[rsp+8]
+       vxorps    xmm0,xmm0,xmm0
+       vmovss    dword ptr [rax],xmm0
+       vmovss    dword ptr [rax+4],xmm0
+       vmovss    dword ptr [rax+8],xmm0
+       vmovss    xmm0,dword ptr [7FFF277E5718]
+       vmovss    dword ptr [rax+0C],xmm0
+       lea       rax,[rsp+8]
+       vmovss    xmm0,dword ptr [rax]
+       vmovss    xmm1,dword ptr [rax+4]
+       vmovss    xmm2,dword ptr [rax+8]
+       vmovss    xmm3,dword ptr [rax+0C]
+       vmovss    xmm4,dword ptr [7FFF277E571C]
+       vxorps    xmm0,xmm0,xmm4
+       vmovss    xmm4,dword ptr [7FFF277E571C]
+       vxorps    xmm1,xmm1,xmm4
+       vmovss    xmm4,dword ptr [7FFF277E571C]
+       vxorps    xmm2,xmm2,xmm4
+       vmovss    dword ptr [rdx],xmm0
+       vmovss    dword ptr [rdx+4],xmm1
+       vmovss    dword ptr [rdx+8],xmm2
+       vmovss    dword ptr [rdx+0C],xmm3
+       mov       rax,rdx
+       add       rsp,18
+       ret
+; Total bytes of code 130
+</pre>
+</td>
+<td style="vertical-align: top">
+<pre>
+; System.Numerics.Tests.Perf_Quaternion.ConjugateBenchmark()
+       push      rsi
+       sub       rsp,40
+       vzeroupper
+       mov       rsi,rdx
+       lea       rcx,[rsp+30]
+       vxorps    xmm0,xmm0,xmm0
+       vmovss    dword ptr [rcx],xmm0
+       vmovss    dword ptr [rcx+4],xmm0
+       vmovss    dword ptr [rcx+8],xmm0
+       vmovss    xmm0,dword ptr [7FFF3AEB4610]
+       vmovss    dword ptr [rcx+0C],xmm0
+       mov       rcx,rsi
+       vmovupd   xmm0,[rsp+30]
+       vmovupd   [rsp+20],xmm0
+       lea       rdx,[rsp+20]
+       call      System.Numerics.Quaternion.Conjugate(System.Numerics.Quaternion)
+       mov       rax,rsi
+       add       rsp,40
+       pop       rsi
+       ret
+; Total bytes of code 81
+</pre>
+<pre>
+; System.Numerics.Quaternion.Conjugate(System.Numerics.Quaternion)
+       vzeroupper
+       vmovss    xmm0,dword ptr [rdx]
+       vmovss    xmm1,dword ptr [7FFF3AEB46E0]
+       vxorps    xmm0,xmm0,xmm1
+       vmovss    xmm1,dword ptr [rdx+4]
+       vmovss    xmm2,dword ptr [7FFF3AEB46E0]
+       vxorps    xmm1,xmm1,xmm2
+       vmovss    xmm2,dword ptr [rdx+8]
+       vmovss    xmm3,dword ptr [7FFF3AEB46E0]
+       vxorps    xmm2,xmm2,xmm3
+       vmovss    xmm3,dword ptr [rdx+0C]
+       vmovss    dword ptr [rcx],xmm0
+       vmovss    dword ptr [rcx+4],xmm1
+       vmovss    dword ptr [rcx+8],xmm2
+       vmovss    dword ptr [rcx+0C],xmm3
+       mov       rax,rcx
+       ret
+; Total bytes of code 81
+</pre>
+</td>
+</tr>
+</table>
+
+### The generated assembly code has not changed, but the performance has regressed
+
+This is possible and happens more frequently than we would like to ;) It's typically caused by the alignment changes.
+
+#### Memory Alignment
+
+If given benchmark is using arrays (or any other continious segments of memory) and they are being iterated over and over it's likely that you are facing a memory alignment issue.
+
+In https://github.com/dotnet/runtime/issues/37814 @jkotas has [provided](https://github.com/dotnet/runtime/issues/37814#issuecomment-667804880) a small repro that shows *"the many modal nature of memory copying"*:
+
+```cs
+using System;
+using System.Diagnostics;
+
+class Program
+{
+    static void Work(ReadOnlySpan<string> from, Span<string> to)
+    {
+        for (int i = 0; i < 1000000; i++) from.CopyTo(to);
+    }
+
+    static void Main(string[] args)
+    {
+        Random r = new Random();
+        for (;;)
+        {
+            var sw = new Stopwatch();
+            GC.KeepAlive(new byte[r.Next(32)]); // the trick
+            var from = new string[2048];
+            GC.KeepAlive(new byte[r.Next(32)]);
+            var to = new string[2048];
+            if (r.Next(10) == 0) GC.Collect();
+            sw.Start();
+            Work(from, to);       
+            sw.Stop();
+            Console.WriteLine(sw.ElapsedMilliseconds);
+        }
+    }
+}
+```
+
+In this particular example using my machine I am getting values oscilating between ~430 and ~630 ms.
+
+The best thing you can do is to **make sure that the produced assembly code has not changed and just close the issue**. If you want to be 100% sure you can handcraft a modified version of the benchmark that allocates an aligned array, pins it and reuses for all benchmarking iterations. If you want to go deeper than that, you need to use a specialized profiler like [VTune](profiling-workflow-dotnet-runtime.md#VTune) or [uProf](profiling-workflow-dotnet-runtime.md#uProf).
+
+
+#### Code Alignment
 
