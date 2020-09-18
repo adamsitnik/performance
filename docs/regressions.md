@@ -10,6 +10,11 @@
     - [InProcessToolchain](#InProcessToolchain)
     - [CoreRunToolchain](#CoreRunToolchain)
   - [Analysis](#Analysis)
+    - [The managed implementation was changed and the produced assembly code has changed as well](#The-managed-implementation-was-changed-and-the-produced-assembly-code-has-changed-as-well)
+    - [The managed implementation was not changed, but the produced assembly code has changed](#The-managed-implementation-was-not-changed-but-the-produced-assembly-code-has-changed)
+    - [The generated assembly code has not changed, but the performance has regressed](#The-generated-assembly-code-has-not-changed-but-the-performance-has-regressed)
+        - [Memory Alignment](#Memory-Alignment)
+        - [Code Alignment](#Code-Alignment)
 
 # Introduction
 
@@ -357,3 +362,164 @@ private static T[] AllocateAlignedArray<T>(int size, out GCHandle pinnedArrayHan
 
 #### Code Alignment
 
+If the assembly code is identical but performs worse it might be caused by code alignment changes. If the produced code size is small, you can just enforce the disassembler to print instruction addresses and verify if the hot path alignment has changed..
+
+
+Typically the most important is the alignment of the first instruction of the loop (where the code jumps after every iteration). You can use an experimental JIT feature that aligns the loops to verify that. It's configurable with an environment variable called `COMPlus_JitAlignLoops`.
+
+```cmd
+dotnet run --envVars COMPlus_JitAlignLoops:1
+# or via the python script
+benchmarks_ci.py --bdn-arguments "--envVars COMPlus_JitAlignLoops:1"
+```
+
+An [example](https://github.com/dotnet/runtime/issues/39721) that shows how loop alignment changes *"regressed"* `Span<Byte>.BinarySearch`:
+
+```cs
+.AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(printInstructionAddresses: true)))
+```
+
+```cmd
+py .\performance\scripts\benchmarks_ci.py -f netcoreapp5.0 --filter 'System.Memory.Span<Byte>.BinarySearch' --bdn-arguments "--envVars COMPlus_JitAlignLoops:0"
+```
+
+
+|       Method | Size |     Mean |    Error |   StdDev |   Median |      Min |      Max | Code Size |
+|------------- |----- |---------:|---------:|---------:|---------:|---------:|---------:|----------:|
+| BinarySearch |  512 | 17.55 ns | 0.313 ns | 0.278 ns | 17.56 ns | 17.23 ns | 18.13 ns |     113 B |
+
+```cmd
+py .\performance\scripts\benchmarks_ci.py -f netcoreapp5.0 --filter 'System.Memory.Span<Byte>.BinarySearch' --bdn-arguments "--envVars COMPlus_JitAlignLoops:1"
+```
+
+|       Method | Size |     Mean |    Error |   StdDev |   Median |      Min |      Max | Code Size |
+|------------- |----- |---------:|---------:|---------:|---------:|---------:|---------:|----------:|
+| BinarySearch |  512 | 11.80 ns | 0.172 ns | 0.153 ns | 11.77 ns | 11.61 ns | 12.12 ns |     116 B |
+
+<table>
+<tr>
+<th>
+Loop not aligned
+</th>
+<th>
+Loop aligned
+</th>
+</tr>
+<tr>
+<td style="vertical-align: top">
+<pre>
+; BinarySearch()
+       7FFB797C58B0 sub       rsp,28
+       7FFB797C58B4 mov       rdx,[rcx+18]
+       7FFB797C58B8 test      rdx,rdx
+       7FFB797C58BB jne       short M00_L00
+       7FFB797C58BD xor       r8d,r8d
+       7FFB797C58C0 xor       edx,edx
+       7FFB797C58C2 jmp       short M00_L01
+M00_L00:
+       7FFB797C58C4 lea       r8,[rdx+10]
+       7FFB797C58C8 mov       edx,[rdx+8]
+M00_L01:
+       7FFB797C58CB movzx     eax,byte ptr [rcx+2C]
+       7FFB797C58CF mov       rcx,r8
+       7FFB797C58D2 mov       r8d,eax
+       7FFB797C58D5 call      BinarySearch(Byte ByRef, Int32, Byte)
+       7FFB797C58DA nop
+       7FFB797C58DB add       rsp,28
+       7FFB797C58DF ret
+; Total bytes of code 48
+</pre>
+<pre>
+; BinarySearch(Byte ByRef, Int32, Byte)
+       7FFB797C5980 mov       [rsp+18],r8d
+       7FFB797C5985 xor       eax,eax
+       7FFB797C5987 dec       edx
+       7FFB797C5989 test      edx,edx
+       7FFB797C598B jl        short M01_L03
+M01_L00:
+       7FFB797C598D lea       r8d,[rdx+rax]
+       7FFB797C5991 shr       r8d,1
+       7FFB797C5994 movsxd    r9,r8d
+       7FFB797C5997 movzx     r9d,byte ptr [rcx+r9]
+       7FFB797C599C movzx     r10d,byte ptr [rsp+18]
+       7FFB797C59A2 sub       r10d,r9d
+       7FFB797C59A5 je        short M01_L04
+       7FFB797C59A7 test      r10d,r10d
+       7FFB797C59AA jle       short M01_L01
+       7FFB797C59AC lea       eax,[r8+1]
+       7FFB797C59B0 jmp       short M01_L02
+M01_L01:
+       7FFB797C59B2 lea       edx,[r8+0FFFF]
+M01_L02:
+       7FFB797C59B6 cmp       eax,edx
+       7FFB797C59B8 jle       short M01_L00
+M01_L03:
+       7FFB797C59BA not       eax
+       7FFB797C59BC ret
+M01_L04:
+       7FFB797C59BD mov       eax,r8d
+       7FFB797C59C0 ret
+; Total bytes of code 65
+</pre>
+</td>
+<td style="vertical-align: top">
+<pre>
+; BinarySearch()
+       7FFB797D5930 sub       rsp,28
+       7FFB797D5934 mov       rdx,[rcx+18]
+       7FFB797D5938 test      rdx,rdx
+       7FFB797D593B jne       short M00_L00
+       7FFB797D593D xor       r8d,r8d
+       7FFB797D5940 xor       edx,edx
+       7FFB797D5942 jmp       short M00_L01
+M00_L00:
+       7FFB797D5944 lea       r8,[rdx+10]
+       7FFB797D5948 mov       edx,[rdx+8]
+M00_L01:
+       7FFB797D594B movzx     eax,byte ptr [rcx+2C]
+       7FFB797D594F mov       rcx,r8
+       7FFB797D5952 mov       r8d,eax
+       7FFB797D5955 call      BinarySearch(Byte ByRef, Int32, Byte)
+       7FFB797D595A nop
+       7FFB797D595B add       rsp,28
+       7FFB797D595F ret
+; Total bytes of code 48
+</pre>
+<pre>
+; BinarySearch(Byte ByRef, Int32, Byte)
+       7FFB797D5A00 mov       [rsp+18],r8d
+       7FFB797D5A05 xor       eax,eax
+       7FFB797D5A07 dec       edx
+       7FFB797D5A09 test      edx,edx
+       7FFB797D5A0B jl        short M01_L03
+       7FFB797D5A0D nop       dword ptr [rax] // the aligning NOP!!
+M01_L00:
+       7FFB797D5A10 lea       r8d,[rdx+rax]
+       7FFB797D5A14 shr       r8d,1
+       7FFB797D5A17 movsxd    r9,r8d
+       7FFB797D5A1A movzx     r9d,byte ptr [rcx+r9]
+       7FFB797D5A1F movzx     r10d,byte ptr [rsp+18]
+       7FFB797D5A25 sub       r10d,r9d
+       7FFB797D5A28 je        short M01_L04
+       7FFB797D5A2A test      r10d,r10d
+       7FFB797D5A2D jle       short M01_L01
+       7FFB797D5A2F lea       eax,[r8+1]
+       7FFB797D5A33 jmp       short M01_L02
+M01_L01:
+       7FFB797D5A35 lea       edx,[r8+0FFFF]
+M01_L02:
+       7FFB797D5A39 cmp       eax,edx
+       7FFB797D5A3B jle       short M01_L00
+M01_L03:
+       7FFB797D5A3D not       eax
+       7FFB797D5A3F ret
+M01_L04:
+       7FFB797D5A40 mov       eax,r8d
+       7FFB797D5A43 ret
+; Total bytes of code 68
+</pre>
+</td>
+</tr>
+</table>
+
+Again, you should just close the issue and provide the disassembly with an explanation.
