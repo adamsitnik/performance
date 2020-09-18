@@ -45,7 +45,7 @@ Last but not least, it might not be clear whether there is a regression or not, 
 
 ![Not sure](img/regressions_notsure.png)
 
-Is such cases, you should estimate how important could be such a regression and decide whether you want to investigate it or not. You should always focus on the obvious regressions first, as they are very often caused by a problem that affects many other benchmarks. Fixing it might simply close few issues at once.
+Is such cases, you should estimate how important could be such a regression and decide whether you want to investigate it or not. You should always focus on the obvious regressions first, as they are very often caused by a problem that affects many other benchmarks. Fixing one big regression might simply solve a few other reported issues at once.
 
 # Repro
 
@@ -74,11 +74,11 @@ Few important things:
 
 If you can't reproduce the problem locally, you need to double-check that you are using the exact same architecture and OS.
 
-If you've ensured that you are using the right config and you still can't repo the problem, you should diff the disassembly. If there is no difference, you can close the issue. Please don't forget to include the exported disassembly 
+If you've ensured that you are using the right config and you still can't repo the problem, you should diff the disassembly. If there is no difference, you can close the issue. Please don't forget to include the exported disassembly. 
 
 # Disassembly
 
-Using the disassembly can be very useful for nano-benchmarks (time reported by BenchmarkDotNet is less than one microsecond). But before we take a look at some `ASM`, let's find out how to get disassembly first.
+Using the disassembly can be very useful for nano-benchmarks (time reported by BenchmarkDotNet is less than one microsecond). But before we take a look at some assembly code, let's find out how to get the disassembly first.
 
 ## DisassemblyDiagnoser
 
@@ -86,7 +86,7 @@ BenchmarkDotNet has a built-in disassembler called [DisassemblyDiagnoser](https:
 
 It supports Windows (both `x64` and `x86`) and Linux `x64`. ARM64 and ARM are not supported ([yet](https://github.com/dotnet/BenchmarkDotNet/issues/1422#issuecomment-691036956)). Internally it uses [ClrMD](https://github.com/Microsoft/clrmd) to get a byte representation of the disassembly (`byte[]`) and [Iced](https://github.com/0xd4d/iced) to turn it into a human-readable text (`string`). It disassembles the code after the benchmarks are executed, so it does not add any overhead to the reported results.
 
-To get the disassembly, you just need to pass `--disasm` or just `-d` to `dotnet cli`.
+To get the disassembly, you need to pass `--disasm` or just `-d` to `dotnet cli`.
 
 This particular disassembler is recursive, and you can control the depth via `--disasmDepth` argument. By default it's set to `1` so it disassembles just the benchmark code itself.
 
@@ -95,7 +95,7 @@ The [benchmarks_ci.py](../scripts/benchmarks_ci.py) script exposes some BDN argu
 Example:
 
 ```cmd
-benchmarks_ci.py --bdn-arguments "--disasm true disasmDepth 3"
+benchmarks_ci.py --bdn-arguments "--disasm true --disasmDepth 3"
 ```
 
 **Note:** By default, the `DisassemblyDiagnoser` does not show the **addresses of the instructions**. It's possible to enable it, but only from the [code level](../src/harness/BenchmarkDotNet.Extensions/RecommendedConfig.cs):
@@ -114,14 +114,14 @@ There are two ways of using it with BenchmarkDotNet.
 
 When working with local builds of .NET Core it's [recommended](benchmarking-workflow-dotnet-runtime.md) to use [CoreRun](benchmarkdotnet.md#CoreRun) to run the benchmarks against a local build of .NET Core.
 
-To combine the powers of `ClrJit`, `CoreRun` and `BenchmarkDotNet` you need to copy a `checked` version of `clrjit.dll` into `Release` CoreRun's folder (**Checked -> Release**):
+To combine the powers of `JitDump`, `CoreRun` and `BenchmarkDotNet` you need to copy a `checked` version of `clrjit.dll` into `Release` TestHost folder (**Checked -> Release**):
 
 ```cmd
 copy /y ".\runtime\artifacts\bin\coreclr\Windows_NT.x64.Checked\clrjit.dll" \\
  ".\runtime\artifacts\bin\testhost\net5.0-Windows_NT-Release-x64\shared\Microsoft.NETCore.App\6.0.0\"
 ```
 
-**Note:** You might need to do it every time after you rebuild the product.
+**Note:** You might need to do it every time after you rebuild the product (the checked version of `clrjit.dll` is going to get replaced with release version).
 
 And then tell BenchmarkDotNet to use it to run the benchmarks with appropriate environment variables:
 
@@ -133,9 +133,9 @@ py .\performance\scripts\benchmarks_ci.py -f netcoreapp5.0 \\
 --dotnet-compilation-mode NoTiering
 ```
 
-**Note:** to disable Tiered JIT (otherwise you get Tier 0 code) you need tp pass `--dotnet-compilation-mode NoTiering` to the python script (or the right thing to `--envVars`).
+**Note:** to disable Tiered JIT (otherwise you get Tier 0 code) you need to pass `--dotnet-compilation-mode NoTiering` to the python script (or `--envVars  COMPlus_TieredCompilation:0`).
 
-**Note:** The filter accepted by `COMPlus_JitDump` uses `:` (colon) to separate type and method names. The filter accepted by BDN uses dots only.
+**Note:** The filter accepted by `COMPlus_JitDump` uses `:` (colon) to separate type and method names. The filter accepted by BDN uses dots (only).
 
 ```cmd
 --filter Burgers.Test0
@@ -147,7 +147,7 @@ py .\performance\scripts\benchmarks_ci.py -f netcoreapp5.0 \\
 By default BenchmarkDotNet runs every benchmark in a standalone process. But it's possible to run the benchmarks in the same process. As long as they don't have any side-effects (allocating memory, creating threads etc) it *should be fine*.
 
 * follow the steps described [here](https://github.com/dotnet/runtime/blob/master/docs/design/coreclr/jit/viewing-jit-dumps.md#setting-up-our-environment) for [MicroBenchmarks.csproj](../src/benchmarks/micro/MicroBenchmarks.csproj) project
-* the [src/benchmarks/micro](../src/benchmarks/micro/) folder contains a solution file and a project file named `MicroBenchmarks`. To publish a self-contained version of the project you need to specify the **path to project file** in explicit way. If you don't it's going to try to publish all projects from the [solution file](../src/benchmarks/micro/MicroBenchmarks.sln) and fail!
+* the [src/benchmarks/micro](../src/benchmarks/micro/) folder contains a solution file and a project file named `MicroBenchmarks`. To publish a self-contained version of the project you need to specify the **path to project file** in explicit way. If you don't, it's going to try to publish all projects from the [solution file](../src/benchmarks/micro/MicroBenchmarks.sln) and fail!
 
 ```cmd
 # make sure that the local copy of dotnet is used (not the default version from your PATH)
@@ -184,7 +184,7 @@ If the C# source code became:
 * more complex to solve a different problem (like added a few `if` statements to fix a bug):
   * if it's an important code path you should optimize it or ask for help if you don't know how to do it (**it's perfectly fine to not know all C# perf tricks!!**).
   * if it can not be optimized or it's not worth it, you should close the issue and explain why it's a by-design regression.
-* simpler, but the produced assembly code has gotten worse you should label the issue as `area-CodeGen-coreclr` and tag @dotnet/jit-contrib to get help. Depending on the complexity of the problem and the judgment of the JIT Team the problem might get fixed on the JIT side or given change might be simply reverted.
+* simpler, but the produced assembly code has gotten worse you should label the issue as `area-CodeGen-coreclr` and tag @dotnet/jit-contrib to get help. Depending on the complexity of the problem and the judgment of the JIT Team the issue might get fixed on the JIT side or given change might be simply reverted.
 
 ### The managed implementation was **not** changed, but the produced assembly code has changed
 
