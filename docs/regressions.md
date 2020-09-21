@@ -15,6 +15,7 @@
     - [The generated assembly code has not changed, but the performance has regressed](#The-generated-assembly-code-has-not-changed-but-the-performance-has-regressed)
         - [Memory Alignment](#Memory-Alignment)
         - [Code Alignment](#Code-Alignment)
+- [Profiling](#Profiling)
 
 # Introduction
 
@@ -523,3 +524,15 @@ M01_L04:
 </table>
 
 Again, you should just close the issue and provide the disassembly with an explanation.
+
+# Profiling
+
+If the benchmark that has regressed is not a nano-benchmark, you should use a profiler to find out what exactly has regressed. This is explained in the [Profiling workflow for dotnet/runtime repository](profiling-workflow-dotnet-runtime.md) doc, below you can find a quick recap.
+
+You need to:
+
+1. Create a small [Repro](profiling-workflow-dotnet-runtime.md#Repro) app.
+2. Set the recommended [Project Settings](profiling-workflow-dotnet-runtime.md#Project-Settings).
+3. Use [PerfView](profiling-workflow-dotnet-runtime.md#Perfview) (for Windows) or [PerfCollect](profiling-workflow-dotnet-runtime.md#PerfCollect) (for Linux) to profile the repro app and capture two trace files: one using an older version of .NET without the regression and one using a newer version with the regression.
+4. Use PerfView to open both trace files (it supports PerfCollect trace files as well) and [filter](profiling-workflow-dotnet-runtime.md#Filtering) the trace files in an exact same way to allow for an apples-to-apples comparison.
+5. Use PerfView's [built-in support for identifying regressions](profiling-workflow-dotnet-runtime.md#Identifying-Regressions).
