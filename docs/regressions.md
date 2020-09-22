@@ -527,7 +527,7 @@ Again, you should just close the issue and provide the disassembly with an expla
 
 # Profiling
 
-If the benchmark that has regressed is not a nano-benchmark, you should use a profiler to find out what exactly has regressed. This is explained in the [Profiling workflow for dotnet/runtime repository](profiling-workflow-dotnet-runtime.md) doc, below you can find a quick recap.
+If the benchmark that has regressed is not a nano-benchmark, you should use a profiler to find out what exactly has regressed. This is explained in the [Profiling workflow for dotnet/runtime repository](profiling-workflow-dotnet-runtime.md) doc. Below you can find a quick recap.
 
 You need to:
 
@@ -536,3 +536,5 @@ You need to:
 3. Use [PerfView](profiling-workflow-dotnet-runtime.md#Perfview) (for Windows) or [PerfCollect](profiling-workflow-dotnet-runtime.md#PerfCollect) (for Linux) to profile the repro app and capture two trace files: one using an older version of .NET without the regression and one using a newer version with the regression.
 4. Use PerfView to open both trace files (it supports PerfCollect trace files as well) and [filter](profiling-workflow-dotnet-runtime.md#Filtering) the trace files in an exact same way to allow for an apples-to-apples comparison.
 5. Use PerfView's [built-in support for identifying regressions](profiling-workflow-dotnet-runtime.md#Identifying-Regressions).
+
+In case the entire CPU time is spent in a single big method, you should use [Visual Studio Profiler](profiling-workflow-dotnet-runtime.md#Visual-Studio-Profiler) to see CPU usage per C# source line. As of today, to be able to see the source code of the `System.*.dll` libraries you need to built the dotnet/runtime repo locally, use `CoreRun.exe` to run the precompiled repro app (`.dll` file) and attach VS Profiler to the CoreRun process.
