@@ -16,6 +16,8 @@
         - [Memory Alignment](#Memory-Alignment)
         - [Code Alignment](#Code-Alignment)
 - [Profiling](#Profiling)
+- [Workshop](#Workshop)
+  - [Historical Data](#Historical-Data)
 
 # Introduction
 
@@ -538,3 +540,51 @@ You need to:
 5. Use PerfView's [built-in support for identifying regressions](profiling-workflow-dotnet-runtime.md#Identifying-Regressions).
 
 In case the entire CPU time is spent in a single big method, you should use [Visual Studio Profiler](profiling-workflow-dotnet-runtime.md#Visual-Studio-Profiler) to see CPU usage per C# source line. As of today, to be able to see the source code of the `System.*.dll` libraries you need to built the dotnet/runtime repo locally, use `CoreRun.exe` to run the precompiled repro app (`.dll` file) and attach VS Profiler to the CoreRun process.
+
+# Workshop
+
+## Historical Data
+
+Evaluate the historical data in the following issues:
+
+- [System.Collections.IndexerSet<String>.Array](https://github.com/DrewScoggins/performance-2/issues/1908)
+- [ByteMark.BenchIDEAEncryption](https://github.com/DrewScoggins/performance-2/issues/1609) (ignore the dead link, use the other one)
+- [System.Xml.Linq.Perf_XElementList.Enumerator](https://github.com/DrewScoggins/performance-2/issues/1877)
+- [System.Buffers.Tests.ReadOnlySequenceTests<Char>.IterateGetPositionTenSegments](https://github.com/DrewScoggins/performance-2/issues/1906)
+- [Span.IndexerBench.KnownSizeCtor2](https://github.com/DrewScoggins/performance-2/issues/1854)
+- [System.Buffers.Tests.RentReturnArrayPoolTests.ProducerConsumer](https://github.com/DrewScoggins/performance-2/issues/1047)
+- [System.IO.Tests.Perf_Directory.EnumerateFiles](https://github.com/DrewScoggins/performance-2/issues/1596) (just `EnumerateFiles` benchmark, not all 3 mentioned in the issue)
+- [PerfLabTests.BlockCopyPerf.CallBlockCopy](https://github.com/DrewScoggins/performance-2/issues/1861)
+
+and assign them to one of the following categories:
+
+* actual regression
+* multimodal benchmark
+* unstable benchmark
+* noisy benchmark (within the range of 10% noise)
+
+Click on the details to verify your answers:
+
+<details>
+
+Actual regression:
+
+- `ByteMark.BenchIDEAEncryption`
+- `System.IO.Tests.Perf_Directory.EnumerateFiles`
+
+Multimodal:
+
+- `System.Collections.IndexerSet<String>.Array`
+- `Span.IndexerBench.KnownSizeCtor2`
+
+Unstable:
+
+- `System.Buffers.Tests.RentReturnArrayPoolTests<Object>.ProducerConsumer`
+- `PerfLabTests.BlockCopyPerf.CallBlockCopy`
+
+Noisy:
+
+- `System.Buffers.Tests.ReadOnlySequenceTests<Char>.IterateGetPositionTenSegments`
+- `System.Xml.Linq.Perf_XElementList.Enumerator`
+
+</details>
