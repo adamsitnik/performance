@@ -18,6 +18,7 @@
 - [Profiling](#Profiling)
 - [Workshop](#Workshop)
   - [Historical Data](#Historical-Data)
+  - [Disassembly](#Disassembly)
 
 # Introduction
 
@@ -586,5 +587,80 @@ Noisy:
 
 - `System.Buffers.Tests.ReadOnlySequenceTests<Char>.IterateGetPositionTenSegments`
 - `System.Xml.Linq.Perf_XElementList.Enumerator`
+
+</details>
+
+## Disassembly
+
+### Simple
+
+Run `System.Tests.Perf_Char.GetUnicodeCategory` [benchmark](https://github.com/dotnet/performance/blob/1c160f6fd074d104e6de39b2fae48d657673a5ab/src/benchmarks/micro/libraries/System.Runtime/Perf.Char.cs#L85-L89) for .NET Core 3.1 and 5.0 x64, get the disassembly and answer the following questions:
+
+1. What arguments do you need to pass to the `benchmarks_ci.py` script to run given benchmarks for .NET Core 3.1 & 5.0 and get the disassembly for depth equal 3?
+2. Which test cases have regressed, which did not?
+3. Why some of them have regressed?
+4. Why others did not regress?
+5. What could be a potential fix?
+6. What is the recommended way of veryfing the fix?
+7. Is it a big and important regression?
+
+Click on the details to verify your answers:
+
+<details>
+
+1. `-f netcoreapp3.1 netcoreapp5.0 --filter System.Tests.Perf_Char.GetUnicodeCategory --bdn-arguments "--disasm true --disasmDepth 3"`
+2. `.` and `a` have not regressed, `\x05D0` (represented as `?` in the console) did. The regression might not be visible on Skylake processors.
+3. Because the `\x05D0` character requires 4 instead of 2 method calls now.
+4. Because the code path for `.` and `a` has not changed.
+5. Inlining `System.Globalization.CharUnicodeInfo.GetUnicodeCategoryNoBoundsChecks(UInt32)` and `System.Globalization.CharUnicodeInfo.GetCategoryCasingTableOffsetNoBoundsChecks(UInt32)` into `System.Globalization.CharUnicodeInfo.GetUnicodeCategory(Int32)`
+6. Running the benchmarks against local build of dotnet/runtime repository by using CoreRun and passing it's path via `--corerun` to the harness.
+7. No, it's a very minor regression used mainly for educational purpose.
+
+</details>
+
+### Medium
+
+Run `Benchstone.BenchI.Fib.Test` [benchmark](https://github.com/dotnet/performance/blob/8aed638c9ee65c034fe0cca4ea2bdc3a68d2a6b5/src/benchmarks/micro/runtime/Benchstones/BenchI/Fib.cs) for .NET Core 3.1 and 5.0 **x86**, get the disassembly and answer the following questions:
+
+1. What arguments do you need to pass to the `benchmarks_ci.py` script to run given benchmarks for .NET Core 3.1 & 5.0 **x86** and get the disassembly?
+2. Have the generated assembly code changed?
+3. Have the performance regressed?
+4. What needs to be changed to enforce the harness to print instruction addresses?
+5. If the generated codegen is the same, but the random code alignment have changed and the performance has regressed, is it worth investigating the issue further?
+
+<details>
+
+1. `-f netcoreapp3.1 netcoreapp5.0 --architecture x86 --filter Benchstone.BenchI.Fib.Test --bdn-arguments "--disasm true"`
+2. No.
+3. Depending on the code alignment, it might have regressed.
+4. You need to modify the [code](../src/harness/BenchmarkDotNet.Extensions/RecommendedConfig.cs) type and add `.AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(printInstructionAddresses: true)))`.
+5. Most likely not as we have very little control over that.
+
+</details>
+
+### Hard
+
+Run `System.Memory.Span<Char>.IndexOfValue` [benchmark](https://github.com/dotnet/performance/blob/8aed638c9ee65c034fe0cca4ea2bdc3a68d2a6b5/src/benchmarks/micro/libraries/System.Memory/Span.cs#L69) for .NET Core 3.1 and 5.0 x64, get the disassembly and answer the following questions:
+
+1. What arguments do you need to pass to the `benchmarks_ci.py` script to run given benchmarks for .NET Core 3.1 & 5.0 and get the disassembly?
+2. Do `<` and `>` characters needs to be escaped when using Windows Command Prompt?
+3. Have the total size of the generated code increased or decreased? If yes, by how many bytes?
+4. Are there any instructions that have been removed in the newer version of .NET Core? If so, which ones?
+5. Have the performance regressed?
+6. What arguments needs to be passed to the `benchmarks_ci.py` script to enforce the JIT to align the loops? 
+7. How can you verify that the loops have been aligned?
+8. Does the performance change if you enforce JIT to align the loops?
+
+
+<details>
+
+1. `-f netcoreapp3.1 netcoreapp5.0 --filter "System.Memory.Span<Char>.IndexOfValue" --bdn-arguments "--disasm true"`
+2. Yes, otherwise you get an error saying *"The system cannot find the file specified"*.
+3. Decreased, by `19` bytes (at least on Windows, `56 - 48 + 462 - 451`)
+4. Two `mov`s from the benchmark and two `test` instructions from `System.SpanHelpers.IndexOf(Char ByRef, Char, Int32)`.
+5. Depending on the code alignment, it might have regressed.
+6. `--bdn-arguments "--envVars COMPlus_JitAlignLoops:1"`
+7. You need to modify the [code](../src/harness/BenchmarkDotNet.Extensions/RecommendedConfig.cs) type and add `.AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(printInstructionAddresses: true)))`. Then run the benchmarks, open the exported disassembly and check if the address of the first instruction of the loop is aligned.
+8. If the loop was not aligned before (the memory layout is random) it should improve.
 
 </details>
