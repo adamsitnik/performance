@@ -16,6 +16,7 @@
         - [Memory Alignment](#Memory-Alignment)
         - [Code Alignment](#Code-Alignment)
 - [Profiling](#Profiling)
+  - [Visual Studio Profiler](#Visual-Studio-Profiler)
 - [Workshop](#Workshop)
   - [Historical Data](#Historical-Data)
   - [Disassembly](#Disassembly)
@@ -541,6 +542,8 @@ You need to:
 4. Use PerfView to open both trace files (it supports PerfCollect trace files as well) and [filter](profiling-workflow-dotnet-runtime.md#Filtering) the trace files in an exact same way to allow for an apples-to-apples comparison.
 5. Use PerfView's [built-in support for identifying regressions](profiling-workflow-dotnet-runtime.md#Identifying-Regressions).
 
+## Visual Studio Profiler
+
 In case the entire CPU time is spent in a single big method, you should use [Visual Studio Profiler](profiling-workflow-dotnet-runtime.md#Visual-Studio-Profiler) to see CPU usage per C# source line. As of today, to be able to see the source code of the `System.*.dll` libraries you need to build the dotnet/runtime repo locally, use `CoreRun.exe` to run the precompiled repro app (`.dll` file) and attach VS Profiler to the CoreRun process.
 
 # Workshop
@@ -756,3 +759,29 @@ Click on the details to verify your answers:
 </details>
 
 ### Hard
+
+Copy the source code of [System.Text.Encodings.Web.Tests.Perf_Encoders.EncodeUtf8](https://github.com/dotnet/performance/blob/2a4232d994b88c37093399537b0b2a62ef163aeb/src/benchmarks/micro/libraries/System.Text.Encodings.Web/Perf.Encoders.cs) benchmark and create a small repro app using the following test case: `new EncoderArguments("no escaping required", 512, JavaScriptEncoder.Default)`. Publish a self-contained executable for .NET Core **3.1** and **5.0** and profile both exes using PerfView. Answer the following questions:
+
+1. Is using PerfView enough to identify this particular regression? Why?
+2. Which profilers can be used to see CPU time per C# source code line? Which one is recommended on Windows?
+3. Which profiler can show CPU consumption per source line for both C# **and** C++ on Linux?
+4. Use the recommended profiler and profile a local build of .NET Core 3.1 and 5.0 using CoreRun.exe ([Hint](#Visual-Studio-Profiler)). Is there any difference in the reported CPU time? Is it true for both when Tiered JIT is enabled and disabled?
+5. What arguments need to be passed to the `benchmarks_ci.pi` script to run the benchmarks with Tiered JIT disabled?
+6. Can DisassemblyDiagnoser be used to get the disassembly of the [System.Text.Encodings.Web.TextEncoder.EncodeUtf8](https://apisof.net/catalog/System.Text.Encodings.Web.TextEncoder.EncodeUtf8(ReadOnlySpan%3CByte%3E,Span%3CByte%3E,Int32,Int32,Boolean)) method? Why?
+7. Which disassembler support indirect method calls?
+8. Which profiler is capable of showing CPU consumption per machine code instruction?
+9. If C# source code has not been modified, but the generated assembly code runs slower, to which area should you assign the issue?
+
+<details>
+
+1. If you are not a hardcore PerfView user, it's not because most of the exclusive CPU time is spent in one big method and you can't tell why it's slower.
+2. Visual Studio Profiler (recommended), VTune and dotTrace.
+3. [VTune](profiling-workflow-dotnet-runtime.md#Linux).
+4. When Tiered JIT is disabled, there is almost no difference.
+5. `--dotnet-compilation-mode NoTiering`
+6. It can not, because the method is virtual and this disassembler does not support indirect method calls.
+7. JitDump
+8. VTune for Intel hardware and uProf for AMD hardware.
+9. `area-CodeGen-coreclr`
+
+</details>
