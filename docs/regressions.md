@@ -97,9 +97,9 @@ It supports Windows (both `x64` and `x86`) and Linux `x64`. ARM64 and ARM are no
 
 To get the disassembly, you need to pass `--disasm` or just `-d` to `dotnet cli`.
 
-This particular disassembler is recursive, and you can control the depth via `--disasmDepth` argument. By default it's set to `1` so it disassembles just the benchmark code itself.
+This particular disassembler is recursive, and you can control the depth via `--disasmDepth` argument. By default it's set to `1` so it disassembles just the benchmark and methods called by the benchmark directly.
 
-The [benchmarks_ci.py](../scripts/benchmarks_ci.py) script exposes some BDN arguments, but not all of them. Those which are not exposed by the python script needs to be passed via `--bdn-arguments` argument as **pairs of strings**.
+**Important:** The [benchmarks_ci.py](../scripts/benchmarks_ci.py) script exposes some BDN arguments, but not all of them. Those which are not exposed by the python script needs to be passed via `--bdn-arguments` argument as **pairs of strings**.
 
 Example:
 
@@ -123,7 +123,7 @@ There are two ways of using it with BenchmarkDotNet.
 
 When working with local builds of .NET Core it's [recommended](benchmarking-workflow-dotnet-runtime.md) to use [CoreRun](benchmarkdotnet.md#CoreRun) to run the benchmarks against a local build of .NET Core.
 
-To combine the powers of `JitDump`, `CoreRun` and `BenchmarkDotNet` you need to copy a `checked` version of `clrjit.dll` into `Release` TestHost folder (**Checked -> Release**):
+To combine the powers of `JitDump`, `CoreRun` and `BenchmarkDotNet` you need to copy a `checked` version of `clrjit.dll` into `Release` TestHost folder (**Checked -> Release**, kudos to @kunalspathak for the idea!):
 
 ```cmd
 copy /y ".\runtime\artifacts\bin\coreclr\Windows_NT.x64.Checked\clrjit.dll" \\
@@ -142,7 +142,7 @@ py .\performance\scripts\benchmarks_ci.py -f netcoreapp5.0 \\
 --dotnet-compilation-mode NoTiering
 ```
 
-**Note:** to disable Tiered JIT (otherwise you get Tier 0 code) you need to pass `--dotnet-compilation-mode NoTiering` to the python script (or `--envVars  COMPlus_TieredCompilation:0`).
+**Important:** to disable Tiered JIT (otherwise you get Tier **0** code) you need to pass `--dotnet-compilation-mode NoTiering` to the python script (or `--envVars  COMPlus_TieredCompilation:0`).
 
 **Note:** The filter accepted by `COMPlus_JitDump` uses `:` (colon) to separate type and method names. The filter accepted by BDN uses dots (only).
 
@@ -366,10 +366,10 @@ private static T[] AllocateAlignedArray<T>(int size, out GCHandle pinnedArrayHan
 
 #### Code Alignment
 
-If the assembly code is identical but performs worse it might be caused by code alignment changes. If the produced code size is small, you can just enforce the disassembler to print instruction addresses and verify if the hot path alignment has changed..
+If the assembly code is identical but performs worse it might be caused by code alignment changes. If the produced code size is small, you can just enforce the disassembler to print instruction addresses and check if the hot path alignment has changed.
 
 
-Typically the most important is the alignment of the first instruction of the loop (where the code jumps after every iteration). You can use an experimental JIT feature that aligns the loops to verify that. It's configurable with an environment variable called `COMPlus_JitAlignLoops`.
+Typically the most important is the alignment of the first instruction of the loop (where the code jumps after every iteration). You can use an experimental JIT feature that aligns the loops to verify that. It's configurable with the environment variable called `COMPlus_JitAlignLoops`.
 
 ```cmd
 dotnet run --envVars COMPlus_JitAlignLoops:1
@@ -540,7 +540,7 @@ You need to:
 4. Use PerfView to open both trace files (it supports PerfCollect trace files as well) and [filter](profiling-workflow-dotnet-runtime.md#Filtering) the trace files in an exact same way to allow for an apples-to-apples comparison.
 5. Use PerfView's [built-in support for identifying regressions](profiling-workflow-dotnet-runtime.md#Identifying-Regressions).
 
-In case the entire CPU time is spent in a single big method, you should use [Visual Studio Profiler](profiling-workflow-dotnet-runtime.md#Visual-Studio-Profiler) to see CPU usage per C# source line. As of today, to be able to see the source code of the `System.*.dll` libraries you need to built the dotnet/runtime repo locally, use `CoreRun.exe` to run the precompiled repro app (`.dll` file) and attach VS Profiler to the CoreRun process.
+In case the entire CPU time is spent in a single big method, you should use [Visual Studio Profiler](profiling-workflow-dotnet-runtime.md#Visual-Studio-Profiler) to see CPU usage per C# source line. As of today, to be able to see the source code of the `System.*.dll` libraries you need to build the dotnet/runtime repo locally, use `CoreRun.exe` to run the precompiled repro app (`.dll` file) and attach VS Profiler to the CoreRun process.
 
 # Workshop
 
