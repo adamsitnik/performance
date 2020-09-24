@@ -19,6 +19,7 @@
 - [Workshop](#Workshop)
   - [Historical Data](#Historical-Data)
   - [Disassembly](#Disassembly)
+  - [Profilers](#Profilers)
 
 # Introduction
 
@@ -622,11 +623,13 @@ Click on the details to verify your answers:
 
 Run `Benchstone.BenchI.Fib.Test` [benchmark](https://github.com/dotnet/performance/blob/8aed638c9ee65c034fe0cca4ea2bdc3a68d2a6b5/src/benchmarks/micro/runtime/Benchstones/BenchI/Fib.cs) for .NET Core 3.1 and 5.0 **x86**, get the disassembly and answer the following questions:
 
-1. What arguments do you need to pass to the `benchmarks_ci.py` script to run given benchmarks for .NET Core 3.1 & 5.0 **x86** and get the disassembly?
+1. What arguments do you need to pass to the `benchmarks_ci.py` script to run given benchmark for .NET Core 3.1 & 5.0 **x86** and get the disassembly?
 2. Have the generated assembly code changed?
 3. Have the performance regressed?
 4. What needs to be changed to enforce the harness to print instruction addresses?
 5. If the generated codegen is the same, but the random code alignment have changed and the performance has regressed, is it worth investigating the issue further?
+
+Click on the details to verify your answers:
 
 <details>
 
@@ -642,7 +645,7 @@ Run `Benchstone.BenchI.Fib.Test` [benchmark](https://github.com/dotnet/performan
 
 Run `System.Memory.Span<Char>.IndexOfValue` [benchmark](https://github.com/dotnet/performance/blob/8aed638c9ee65c034fe0cca4ea2bdc3a68d2a6b5/src/benchmarks/micro/libraries/System.Memory/Span.cs#L69) for .NET Core 3.1 and 5.0 x64, get the disassembly and answer the following questions:
 
-1. What arguments do you need to pass to the `benchmarks_ci.py` script to run given benchmarks for .NET Core 3.1 & 5.0 and get the disassembly?
+1. What arguments do you need to pass to the `benchmarks_ci.py` script to run given benchmark for .NET Core 3.1 & 5.0 and get the disassembly?
 2. Do `<` and `>` characters needs to be escaped when using Windows Command Prompt?
 3. Have the total size of the generated code increased or decreased? If yes, by how many bytes?
 4. Are there any instructions that have been removed in the newer version of .NET Core? If so, which ones?
@@ -651,6 +654,7 @@ Run `System.Memory.Span<Char>.IndexOfValue` [benchmark](https://github.com/dotne
 7. How can you verify that the loops have been aligned?
 8. Does the performance change if you enforce JIT to align the loops?
 
+Click on the details to verify your answers:
 
 <details>
 
@@ -664,3 +668,91 @@ Run `System.Memory.Span<Char>.IndexOfValue` [benchmark](https://github.com/dotne
 8. If the loop was not aligned before (the memory layout is random) it should improve.
 
 </details>
+
+## Profilers
+
+### Simple
+
+Create a small, stand-alone app that calls `DateTime.UtcNow` for 3-5 seconds and quits. Publish a self-contained executable for .NET Core **2.1** and **3.1** and profile both exes using PerfView. Answer the following questions:
+
+1. How can a .NET Core console app project target both .NET Core 2.1 and 3.1?
+2. Should you disable Tiered JIT? If yes, why and how.
+3. What arguments needs to be passed to `dotnet publish` to publish a self-contained .NET Core 3.1 Windows x64 `.exe` in Release mode?
+4. When profiling a standalone executable that quits after a few seconds, should you use Perview's `Collect -> Run` or `Collect -> Collect` option?
+5. What needs to be set to prevent PerfView from grouping all methods that don't belong to the profiled `.exe` to `OTHER << X >>` group?
+6. What needs to be done to see the full names of native methods without `?!` signs? Is there a shortcut for doing this for all the methods?
+7. How to filter out process startup and rundown time? What's the easiest way of doing it?
+8. What are the top three inclusive and exclusive CPU time contributors for .NET Core 2.1 and 3.1 (methods only)?
+9. Should you search for top inclusive or exclusive CPU time contributors? Why?
+10. What has caused the regression?
+
+Click on the details to verify your answers:
+
+<details>
+
+1. The project file needs to target both TFMs: `<TargetFrameworks>netcoreapp2.1;netcoreapp3.1</TargetFrameworks>`.
+2. Yes, to make the analysis easier by setting `<TieredCompilation>false</TieredCompilation>` in the project file.
+3. `-c Release -f netcoreapp3.1 --self-contained -r win-x64`
+4. `Collect -> Run`
+5. Grouping needs to by disabled by choosing  `[no grouping]` from the `GroupPats` menu.
+6. Symbols needs to be loaded by using the `Lookup Symbols` option. `Ctrl+A` to select all the methods and `Alt+S` to load the symbols.
+7. By setting proper `Time Range`. The easiest way is to find `Main` method, right click on it and choose `Set Time Range`.
+8. Top 3 (methods only):
+   * inclusive 2.1: `ntdll!RtlUserThreadStart`, `kernel32!BaseThreadInitThunk`, `workshop!__scrt_common_main_seh`
+   * exclusive 2.1: `ntdll!RtlQueryPerformanceCounter`, `ntdll!RtlGetSystemTimePrecise`, `coreclr!SystemNative::__GetSystemTimeAsFileTime`
+   * inclusive 3.1: `ntdll!RtlUserThreadStart`, `kernel32!BaseThreadInitThunk`, `workshop!__scrt_common_main_seh`
+   * exclusive 3.1: `ntdll!RtlpTimeToTimeFields`, `ntdll!RtlQueryPerformanceCounter`, `kernelbase!FileTimeToSystemTime`
+9. Exclusive, as they perform the actual work.
+10. Adding leap second support by introducting an extra call to `kernelbase!FileTimeToSystemTime` and two conversions: `DateToTicks` and `TimeToTicks`.
+
+</details>
+
+
+### Medium
+
+Create a small, stand-alone app that excercises `BinaryFormatter.Deserialize(MemoryStream)` for 3-5 seconds and quits. The stream should contain a previously serialized instance of `LoginViewModel` (see definition below). Publish a self-contained executable for .NET Core **2.1** and **3.1** and profile both exes using PerfView.
+
+```cs
+[Serializable]
+public class LoginViewModel
+{
+    public string Email { get; set; } = "name.familyname@not.com";
+    public string Password { get; set; } = "abcdefgh123456!@";
+    public bool RememberMe { get; set; } = true;
+}
+```
+
+Answer the following questions:
+
+1. Should the repro app allocate a new `MemoryStream` every time it tries to deserialize an instance of `LoginViewModel` type or perhaps reuse a single instance? Why?
+2. How a single instance of `MemoryStream` could be reused multiple times for deserialization?
+3. How could you possibly filter out the allocations of `MemoryStream` and `BinaryFormatter`?
+4. What metric exposed by PerfView allows us to find out if given work was CPU bound or not? How to interpret it? Is it CPU bound this time?
+5. Can you easily find the source of the regression in the `By Name` view? Why?
+6. Does every box width in the Flame Graph correspond to CPU inclusive or exclusive time? What about the leaf boxes?
+7. Can you easily find the source of the regression when eyeballing two Flame Graphs at the same time? Why?
+8. Does PerfView offer any built-in feature that allows for identyfing the regressions?
+9. What has caused the regression?
+10. Is it recommended to use the built-in binary serialization in .NET 5?
+
+Click on the details to verify your answers:
+
+<details>
+
+1. It should allocate a single `MemoryStream` instance, serialize `LoginViewModel` once and call deserialize in a loop. To make sure that we are profiling the deserialization only. Not allocation of `MemoryStream` and deserialization.
+2. Stream's `Position` needs to be reset before every call to `Deserialize`.
+3. There are many ways:
+   * The loop with the deserialization could be moved out to a non-inlinable method and then you could just find the method, right click on it and select `Set Time Range`.
+   * Right click on each of the unwanted methods and choose `Exclude Item`.
+   * Create a new `EventSource` with `Start` and `Stop` events and emit them at runtime. Enable the Additional Provider in Advanced Options prior to profiling. Find the emited events in the `Events` view and use them to set the time range.
+4. `Metric/Interval`. If it reports a value close to 1.00 and the code is single-threaded, the work is CPU bound. Yes, this example is CPU bound.
+5. Most probably not, because there is no single, new and big exclusive time contributor.
+6. Inclusive. For leafs the inclusive == exclusive as they are the last thing on the call stack and the only thing being executed.
+7. It's possible, but unlikely. Both graphs are big (there is a lot of methods on the call stack).
+8. Yes, it [does](profiling-workflow-dotnet-runtime.md#Identifying-Regressions).
+9. Introduction of `ThreadDeserializationTracker`, it requires expensive stack walking.
+10. No, it has been obsoleted and nobody should be using it.
+
+</details>
+
+### Hard
