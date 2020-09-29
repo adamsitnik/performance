@@ -346,6 +346,8 @@ The best thing you can do is to **make sure that the produced assembly code has 
 ```cs
 private static T[] AllocateAlignedArray<T>(int size, out GCHandle pinnedArrayHandle)
 {
+    Random r = new Random();
+
     while (true)
     {
         T[] result = new T[size];
@@ -359,6 +361,8 @@ private static T[] AllocateAlignedArray<T>(int size, out GCHandle pinnedArrayHan
         {
             pinnedArrayHandle.Free();
         }
+
+        GC.KeepAlive(new byte[r.Next(32)]);
     }
 }
 ```
@@ -629,8 +633,9 @@ Run `Benchstone.BenchI.Fib.Test` [benchmark](https://github.com/dotnet/performan
 1. What arguments do you need to pass to the `benchmarks_ci.py` script to run given benchmark for .NET Core 3.1 & 5.0 **x86** and get the disassembly?
 2. Have the generated assembly code changed?
 3. Have the performance regressed?
-4. What needs to be changed to enforce the harness to print instruction addresses?
-5. If the generated codegen is the same, but the random code alignment have changed and the performance has regressed, is it worth investigating the issue further?
+4. Have the code alignment changed?
+5. What needs to be changed to enforce the harness to print instruction addresses?
+6. If the generated codegen is the same, but the random code alignment have changed and the performance has regressed, is it worth investigating the issue further?
 
 Click on the details to verify your answers:
 
@@ -639,6 +644,7 @@ Click on the details to verify your answers:
 1. `-f netcoreapp3.1 netcoreapp5.0 --architecture x86 --filter Benchstone.BenchI.Fib.Test --bdn-arguments "--disasm true"`
 2. No.
 3. Depending on the code alignment, it might have regressed.
+4. Most likely yes.
 4. You need to modify the [code](../src/harness/BenchmarkDotNet.Extensions/RecommendedConfig.cs) type and add `.AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(printInstructionAddresses: true)))`.
 5. Most likely not as we have very little control over that.
 
