@@ -52,9 +52,9 @@ namespace ResultsComparer
             {
                 var basePaths = new List<string>();
                 var diffPaths = new List<string>();
-                foreach (var netcoreapp31Folder in Directory.GetDirectories(args.Input, "netcoreapp31*"))
+                foreach (var netcoreapp31Folder in Directory.GetDirectories(args.Input, "net50*"))
                 {
-                    var netcoreapp50Folder = netcoreapp31Folder.Replace("netcoreapp31", "netcoreapp50");
+                    var netcoreapp50Folder = netcoreapp31Folder.Replace("net50", "net60");
                     if (Directory.Exists(netcoreapp50Folder))
                     {
                         basePaths.Add(netcoreapp31Folder);
@@ -274,15 +274,12 @@ namespace ResultsComparer
                 // and what we care about is "3.1.6"
                 return text.Substring(".NET Core ".Length, "3.1.X".Length);
             }
-            else if (text.StartsWith(".NET Core 5.0.0 (CoreCLR ", StringComparison.OrdinalIgnoreCase))
-            {
-                // it's something like ".NET Core 5.0.0 (CoreCLR 5.0.20.41714, CoreFX 5.0.20.41714)"
-                // and what we care about is "5.0.20.41714"
-                return text.Substring(".NET Core 5.0.0 (CoreCLR ".Length, "5.0.20.41714".Length);
-            }
             else
             {
-                throw new NotSupportedException($"'{text}' is not supported Runtime version");
+                // it's something like ".NET 6.0.0 (6.0.21.35216)"
+                // and what we care about is "6.0.21.35216"
+                int index = text.IndexOf('(');
+                return text.Substring(index + 1, text.Length - index - 2);
             }
         }
 
