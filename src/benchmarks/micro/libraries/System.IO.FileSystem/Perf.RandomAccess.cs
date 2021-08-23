@@ -23,83 +23,23 @@ namespace System.IO.Tests
         private const int OneMibibyte = OneKibibyte  << 10;
         private const int HundredMibibytes = OneMibibyte * 100;
 
-        private Dictionary<long, string> _sourceFilePaths, _destinationFilePaths;
-        private Dictionary<int, byte[]> _sizeToBuffer;
-        private Dictionary<int, byte[][]> _sizeToBuffers;
-
-        private void Setup(params long[] fileSizes)
-        {
-            _sizeToBuffer = new Dictionary<int, byte[]>()
-            {
-                { FourKibibytes, ValuesGenerator.Array<byte>(FourKibibytes) },
-                { SixteenKibibytes, ValuesGenerator.Array<byte>(SixteenKibibytes) },
-            };
-            _sizeToBuffers = new Dictionary<int, byte[][]>()
-            {
-                { SixteenKibibytes, Enumerable.Range(0, 4).Select(_ => ValuesGenerator.Array<byte>(FourKibibytes)).ToArray() },
-                { SixtyFourKibibytes, Enumerable.Range(0, 4).Select(_ => ValuesGenerator.Array<byte>(SixteenKibibytes)).ToArray() },
-            };
-            _sourceFilePaths = fileSizes.ToDictionary(size => size, size => CreateFileWithRandomContent(size));
-            _destinationFilePaths = fileSizes.ToDictionary(size => size, size => CreateFileWithRandomContent(size));
-
-            static string CreateFileWithRandomContent(long fileSize)
-            {
-                string filePath = FileUtils.GetTestFilePath();
-                File.WriteAllBytes(filePath, ValuesGenerator.Array<byte>((int)fileSize));
-                return filePath;
-            }
-        }
-
-        [GlobalCleanup]
-        public void Cleanup()
-        {
-            foreach (string filePath in _sourceFilePaths.Values.Concat(_destinationFilePaths.Values))
-            {
-                File.Delete(filePath);
-            }
-        }
-
-        [GlobalSetup(Targets = new[] { nameof(Read), nameof(ReadScatter), nameof(ReadAsync), nameof(ReadScatterAsync),
-            nameof(Write), nameof(WriteGather), nameof(WriteAsync), nameof(WriteGatherAsync) })]
-        public void SetupBigFileBenchmarks() => Setup(OneMibibyte, HundredMibibytes);
-        
-        public IEnumerable<object[]> ReadWrite_SingleBuffer_Arguments()
-        {
-            // long fileSize, int bufferSize, FileOptions options
-            foreach (FileOptions options in new FileOptions[] { FileOptions.None, FileOptions.Asynchronous })
-            {
-                yield return new object[] { OneMibibyte, FourKibibytes, options }; // medium size file, user buffer size == default stream buffer size
-                yield return new object[] { HundredMibibytes, SixteenKibibytes, options }; // big file, user buffer size == 4 * default stream buffer size
-            }
-        }
-        
-        [Benchmark]
-        [ArgumentsSource(nameof(ReadWrite_SingleBuffer_Arguments))]
-        public long Read(long fileSize, int bufferSize, FileOptions options)
-        {
-            byte[] userBuffer = _sizeToBuffer[bufferSize];
-            long bytesRead = 0;
-
-            using (SafeFileHandle fileHandle = File.OpenHandle(_sourceFilePaths[fileSize], FileMode.Open, FileAccess.Read, FileShare.Read, options))
-            {
-                while (bytesRead < fileSize)
-                {
-                    bytesRead += RandomAccess.Read(fileHandle, userBuffer, bytesRead);
-                }
-            }
-
-            return bytesRead;
-        }
+        const int FileSize = 100_000_000;
+        string _filePath = Path.Combine(Path.GetTempPath(), Path.GetTempFileName());
+        byte[] _buffer = new byte[16000];
 
         [Benchmark]
-        [ArgumentsSource(nameof(ReadWrite_SingleBuffer_Arguments))]
-        public void Write(long fileSize, int bufferSize, FileOptions options)
+        [Arguments(true)]
+        [Arguments(false)]
+        public void PreallocationSize(bool specifyPreallocationSize)
         {
-            byte[] userBuffer = _sizeToBuffer[bufferSize];
-            using (SafeFileHandle fileHandle = File.OpenHandle(_destinationFilePaths[fileSize], FileMode.Create, FileAccess.Write, FileShare.Read, options))
+            byte[] userBuffer = _buffer;
+
+            long preallocationSize = specifyPreallocationSize ? FileSize : 0;
+
+            using (SafeFileHandle fileHandle = File.OpenHandle(_filePath, FileMode.Create, FileAccess.Write, FileShare.Read, FileOptions.DeleteOnClose, preallocationSize))
             {
                 long bytesWritten = 0;
-                for (int i = 0; i < fileSize / bufferSize; i++)
+                for (int i = 0; i < FileSize / userBuffer.Length; i++)
                 {
                     RandomAccess.Write(fileHandle, userBuffer, bytesWritten);
                     bytesWritten += userBuffer.Length;
@@ -107,126 +47,60 @@ namespace System.IO.Tests
             }
         }
 
-        [Benchmark]
-        [ArgumentsSource(nameof(ReadWrite_SingleBuffer_Arguments))]
-        [BenchmarkCategory(Categories.NoWASM)]
-        public async Task<long> ReadAsync(long fileSize, int bufferSize, FileOptions options)
+        [Benchmark(Baseline = true)]
+        public void Write()
         {
-            CancellationToken cancellationToken = CancellationToken.None;
-            Memory<byte> userBuffer = new Memory<byte>(_sizeToBuffer[bufferSize]);
-            long bytesRead = 0;
-            using (SafeFileHandle fileHandle = File.OpenHandle(_sourceFilePaths[fileSize], FileMode.Open, FileAccess.Read, FileShare.Read, options))
-            {
-                while (bytesRead < fileSize)
-                {
-                    bytesRead += await RandomAccess.ReadAsync(fileHandle, userBuffer, bytesRead, cancellationToken);
-                }
-            }
+            byte[] userBuffer = _buffer;
+            using SafeFileHandle fileHandle = File.OpenHandle(_filePath, FileMode.Create, FileAccess.Write, FileShare.Read, FileOptions.DeleteOnClose);
 
-            return bytesRead;
-        }
-
-        [Benchmark]
-        [ArgumentsSource(nameof(ReadWrite_SingleBuffer_Arguments))]
-        [BenchmarkCategory(Categories.NoWASM)]
-        public async Task WriteAsync(long fileSize, int bufferSize, FileOptions options)
-        {
-            CancellationToken cancellationToken = CancellationToken.None;
-            Memory<byte> userBuffer = new Memory<byte>(_sizeToBuffer[bufferSize]);
-            using (SafeFileHandle fileHandle = File.OpenHandle(_destinationFilePaths[fileSize], FileMode.Create, FileAccess.Write, FileShare.Read, options))
+            long bytesWritten = 0;
+            for (int i = 0; i < FileSize / userBuffer.Length; i++)
             {
-                long bytesWritten = 0;
-                for (int i = 0; i < fileSize / bufferSize; i++)
-                {
-                    await RandomAccess.WriteAsync(fileHandle, userBuffer, bytesWritten, cancellationToken);
-                    bytesWritten += userBuffer.Length;
-                }
-            }
-        }
-
-        public IEnumerable<object[]> ReadWrite_MultipleBuffers_Arguments()
-        {
-            // long fileSize, int buffersSize, FileOptions options
-            foreach (FileOptions options in new FileOptions[] { FileOptions.None, FileOptions.Asynchronous })
-            {
-                yield return new object[] { OneMibibyte, SixteenKibibytes, options }; // medium size file, 4x4Mib user buffers
-                yield return new object[] { HundredMibibytes, SixtyFourKibibytes, options }; // big file, 4x16Mib user buffers
+                RandomAccess.Write(fileHandle, userBuffer, bytesWritten);
+                bytesWritten += userBuffer.Length;
             }
         }
 
         [Benchmark]
-        [ArgumentsSource(nameof(ReadWrite_MultipleBuffers_Arguments))]
-        public long ReadScatter(long fileSize, int buffersSize, FileOptions options)
+        public void WriteGather()
         {
-            byte[][] b = _sizeToBuffers[buffersSize];
-            IReadOnlyList<Memory<byte>> buffers = new Memory<byte>[] { b[0], b[1], b[2], b[3], };
-            long bytesRead = 0;
-
-            using (SafeFileHandle fileHandle = File.OpenHandle(_sourceFilePaths[fileSize], FileMode.Open, FileAccess.Read, FileShare.Read, options))
+            byte[] userBuffer = _buffer;
+            IReadOnlyList<ReadOnlyMemory<byte>> buffers = new ReadOnlyMemory<byte>[] { _buffer, _buffer, _buffer, _buffer };
+            using SafeFileHandle fileHandle = File.OpenHandle(_filePath, FileMode.Create, FileAccess.Write, FileShare.Read, FileOptions.DeleteOnClose);
+            
+            long bytesWritten = 0;
+            for (int i = 0; i < FileSize / (userBuffer.Length * 4); i++)
             {
-                while (bytesRead < fileSize)
-                {
-                    bytesRead += RandomAccess.Read(fileHandle, buffers, bytesRead);
-                }
-            }
-
-            return bytesRead;
-        }
-
-        [Benchmark]
-        [ArgumentsSource(nameof(ReadWrite_MultipleBuffers_Arguments))]
-        public void WriteGather(long fileSize, int buffersSize, FileOptions options)
-        {
-            byte[][] b = _sizeToBuffers[buffersSize];
-            IReadOnlyList<ReadOnlyMemory<byte>> buffers = new ReadOnlyMemory<byte>[] { b[0], b[1], b[2], b[3], };
-            using (SafeFileHandle fileHandle = File.OpenHandle(_destinationFilePaths[fileSize], FileMode.Create, FileAccess.Write, FileShare.Read, options))
-            {
-                long bytesWritten = 0;
-                for (int i = 0; i < fileSize / buffersSize; i++)
-                {
-                    RandomAccess.Write(fileHandle, buffers, bytesWritten);
-                    bytesWritten += buffersSize;
-                }
-            }
-        }
-
-        [Benchmark]
-        [ArgumentsSource(nameof(ReadWrite_MultipleBuffers_Arguments))]
-        [BenchmarkCategory(Categories.NoWASM)]
-        public async Task<long> ReadScatterAsync(long fileSize, int buffersSize, FileOptions options)
-        {
-            CancellationToken cancellationToken = CancellationToken.None;
-            byte[][] b = _sizeToBuffers[buffersSize];
-            IReadOnlyList<Memory<byte>> buffers = new Memory<byte>[] { b[0], b[1], b[2], b[3], };
-            long bytesRead = 0;
-            using (SafeFileHandle fileHandle = File.OpenHandle(_sourceFilePaths[fileSize], FileMode.Open, FileAccess.Read, FileShare.Read, options))
-            {
-                while (bytesRead < fileSize)
-                {
-                    bytesRead += await RandomAccess.ReadAsync(fileHandle, buffers, bytesRead, cancellationToken);
-                }
-            }
-
-            return bytesRead;
-        }
-
-        [Benchmark]
-        [ArgumentsSource(nameof(ReadWrite_MultipleBuffers_Arguments))]
-        [BenchmarkCategory(Categories.NoWASM)]
-        public async Task WriteGatherAsync(long fileSize, int buffersSize, FileOptions options)
-        {
-            CancellationToken cancellationToken = CancellationToken.None;
-            byte[][] b = _sizeToBuffers[buffersSize];
-            IReadOnlyList<ReadOnlyMemory<byte>> buffers = new ReadOnlyMemory<byte>[] { b[0], b[1], b[2], b[3], };
-            using (SafeFileHandle fileHandle = File.OpenHandle(_destinationFilePaths[fileSize], FileMode.Create, FileAccess.Write, FileShare.Read, options))
-            {
-                long bytesWritten = 0;
-                for (int i = 0; i < fileSize / buffersSize; i++)
-                {
-                    await RandomAccess.WriteAsync(fileHandle, buffers, bytesWritten, cancellationToken);
-                    bytesWritten += buffersSize;
-                }
+                RandomAccess.Write(fileHandle, buffers, bytesWritten);
+                bytesWritten += userBuffer.Length * 4;
             }
         }
     }
 }
+
+
+//namespace System.IO
+//{
+//    public static class RandomAccess
+//    {
+//        public static int Read(SafeFileHandle handle, Span<byte> buffer, long fileOffset) => 0;
+//        public static void Write(SafeFileHandle handle, ReadOnlySpan<byte> buffer, long fileOffset) { }
+
+//        public static ValueTask<int> ReadAsync(SafeFileHandle handle, Memory<byte> buffer, long fileOffset, CancellationToken cancellationToken = default) => new ValueTask<int>(0);
+//        public static ValueTask WriteAsync(SafeFileHandle handle, ReadOnlyMemory<byte> buffer, long fileOffset, CancellationToken cancellationToken = default) => new ValueTask();
+
+//        public static long Read(SafeFileHandle handle, IReadOnlyList<Memory<byte>> buffers, long fileOffset) => 0;
+//        public static void Write(SafeFileHandle handle, IReadOnlyList<ReadOnlyMemory<byte>> buffers, long fileOffset) { }
+
+//        public static ValueTask<long> ReadAsync(SafeFileHandle handle, IReadOnlyList<Memory<byte>> buffers, long fileOffset, CancellationToken cancellationToken = default) => new ValueTask<long>(0);
+//        public static ValueTask WriteAsync(SafeFileHandle handle, IReadOnlyList<ReadOnlyMemory<byte>> buffers, long fileOffset, CancellationToken cancellationToken = default) => new ValueTask();
+
+//        public static long GetLength(SafeFileHandle handle) => 0;
+//    }
+
+//    partial class File
+//    {
+//        public static SafeFileHandle OpenHandle(string filePath, FileMode mode = FileMode.Open, FileAccess access = FileAccess.Read,
+//            FileShare share = FileShare.Read, FileOptions options = FileOptions.None, long preallocationSize = 0) => null;
+//    }
+//}
