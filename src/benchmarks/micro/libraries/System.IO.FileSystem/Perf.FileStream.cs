@@ -246,6 +246,37 @@ namespace System.IO.Tests
             }
         }
 
+        [Benchmark]
+        [ArgumentsSource(nameof(SyncArguments))]
+        public void Write_PreallocationSize(long fileSize, int userBufferSize, FileOptions options)
+        {
+            byte[] userBuffer = _userBuffers[userBufferSize];
+            using (FileStream fileStream = new FileStream(_destinationFilePaths[fileSize], 
+                new FileStreamOptions { Mode =FileMode.Create,Access = FileAccess.Write, Share = FileShare.Read, BufferSize = FourKibibytes, Options = options, PreallocationSize = fileSize}))
+            {
+                for (int i = 0; i < fileSize / userBufferSize; i++)
+                {
+                    fileStream.Write(userBuffer, 0, userBuffer.Length);
+                }
+            }
+        }
+
+        [Benchmark]
+        [ArgumentsSource(nameof(SyncArguments))]
+        public void Write_SetLength(long fileSize, int userBufferSize, FileOptions options)
+        {
+            byte[] userBuffer = _userBuffers[userBufferSize];
+            using (FileStream fileStream = new FileStream(_destinationFilePaths[fileSize], FileMode.Create, FileAccess.Write, FileShare.Read, FourKibibytes, options))
+            {
+                fileStream.SetLength(fileSize);
+
+                for (int i = 0; i < fileSize / userBufferSize; i++)
+                {
+                    fileStream.Write(userBuffer, 0, userBuffer.Length);
+                }
+            }
+        }
+
 #if !NETFRAMEWORK // APIs added in .NET Core 2.0
 
         public IEnumerable<object[]> AsyncArguments()
