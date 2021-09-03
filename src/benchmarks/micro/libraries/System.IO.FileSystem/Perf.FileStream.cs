@@ -169,7 +169,7 @@ namespace System.IO.Tests
 
         [GlobalSetup(Targets = new[] { nameof(Read), nameof(Read_NoBuffering), "ReadAsync", "ReadAsync_NoBuffering", 
             nameof(Write), nameof(Write_NoBuffering), "WriteAsync", "WriteAsync_NoBuffering", nameof(CopyToFile), nameof(CopyToFileAsync), nameof(Append), "AppendAsync"
-            , nameof(Write_PreallocationSize), nameof(Write_SetLength) })]
+            , nameof(Write_PreallocationSize), nameof(Write_SetLength), nameof(Write_NoBuffering_PreallocationSize), nameof(Write_NoBuffering_SetLength) })]
         public void SetupBigFileBenchmarks() => Setup(OneKibibyte, OneMibibyte, HundredMibibytes);
         
         public IEnumerable<object[]> SyncArguments()
@@ -268,6 +268,38 @@ namespace System.IO.Tests
         {
             byte[] userBuffer = _userBuffers[userBufferSize];
             using (FileStream fileStream = new FileStream(_destinationFilePaths[fileSize], FileMode.Create, FileAccess.Write, FileShare.Read, FourKibibytes, options))
+            {
+                fileStream.SetLength(fileSize);
+
+                for (int i = 0; i < fileSize / userBufferSize; i++)
+                {
+                    fileStream.Write(userBuffer, 0, userBuffer.Length);
+                }
+            }
+        }
+
+
+        [Benchmark]
+        [ArgumentsSource(nameof(SyncArguments_NoBuffering))]
+        public void Write_NoBuffering_PreallocationSize(long fileSize, int userBufferSize, FileOptions options)
+        {
+            byte[] userBuffer = _userBuffers[userBufferSize];
+            using (FileStream fileStream = new FileStream(_destinationFilePaths[fileSize],
+                new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write, Share = FileShare.Read, BufferSize = 1, Options = options, PreallocationSize = fileSize }))
+            {
+                for (int i = 0; i < fileSize / userBufferSize; i++)
+                {
+                    fileStream.Write(userBuffer, 0, userBuffer.Length);
+                }
+            }
+        }
+
+        [Benchmark]
+        [ArgumentsSource(nameof(SyncArguments_NoBuffering))]
+        public void Write_NoBuffering_SetLength(long fileSize, int userBufferSize, FileOptions options)
+        {
+            byte[] userBuffer = _userBuffers[userBufferSize];
+            using (FileStream fileStream = new FileStream(_destinationFilePaths[fileSize], FileMode.Create, FileAccess.Write, FileShare.Read, 1, options))
             {
                 fileStream.SetLength(fileSize);
 
