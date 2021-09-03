@@ -168,7 +168,8 @@ namespace System.IO.Tests
         }
 
         [GlobalSetup(Targets = new[] { nameof(Read), nameof(Read_NoBuffering), "ReadAsync", "ReadAsync_NoBuffering", 
-            nameof(Write), nameof(Write_NoBuffering), "WriteAsync", "WriteAsync_NoBuffering", nameof(CopyToFile), nameof(CopyToFileAsync), nameof(Append), "AppendAsync" })]
+            nameof(Write), nameof(Write_NoBuffering), "WriteAsync", "WriteAsync_NoBuffering", nameof(CopyToFile), nameof(CopyToFileAsync), nameof(Append), "AppendAsync"
+            , nameof(Write_PreallocationSize), nameof(Write_SetLength) })]
         public void SetupBigFileBenchmarks() => Setup(OneKibibyte, OneMibibyte, HundredMibibytes);
         
         public IEnumerable<object[]> SyncArguments()
