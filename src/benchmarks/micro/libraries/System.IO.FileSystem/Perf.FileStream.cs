@@ -3,9 +3,11 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
+using System.Buffers;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Extensions;
 using MicroBenchmarks;
@@ -451,5 +453,78 @@ namespace System.IO.Tests
                 await source.CopyToAsync(destination);
             }
         }
+    }
+
+    [BenchmarkCategory(Categories.Libraries)]
+    public class BestPerf
+    {
+        private const string SourcePath = "source.data";
+        private const string DestinationPath = "destination.data";
+
+        [Params(1000, 10_000_000, 100_000_000)]
+        public int FileSize;
+
+        [GlobalSetup]
+        public void Setup() => File.WriteAllBytes(SourcePath, new byte[FileSize]);
+
+        [GlobalCleanup]
+        public void Cleanup() => File.Delete(SourcePath);
+
+        [Benchmark(Baseline = true)]
+        public void Simple()
+        {
+            byte[] buffer = new byte[4096];
+            using FileStream source = File.OpenRead(SourcePath);
+            using FileStream destination = File.OpenWrite(DestinationPath);
+
+            int bytesRead = 0;
+            while ((bytesRead = source.Read(buffer)) != 0)
+                destination.Write(buffer, 0, bytesRead);
+        }
+
+        [Benchmark]
+        public void SingleBuffer()
+        {
+            using FileStream source = new FileStream(SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 0);
+            var options = new FileStreamOptions
+            {
+                Mode = FileMode.Create,
+                Access = FileAccess.Write,
+                BufferSize = 0, // disable FileStream buffering
+                PreallocationSize = source.Length // specify size up-front
+            };
+            using FileStream destination = new FileStream(DestinationPath, options);
+
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(64_000);
+            int bytesRead = 0;
+            while ((bytesRead = source.Read(buffer)) != 0)
+                destination.Write(buffer, 0, bytesRead);
+
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+
+        [Benchmark]
+        public void BuiltIn() => File.Copy(SourcePath, DestinationPath, overwrite: true);
+
+        //[Benchmark]
+        //public void MultipleBuffers()
+        //{
+        //    using SafeFileHandle source = File.OpenHandle(SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 0);
+        //    using SafeFileHandle destination = File.OpenHandle(DestinationPath, FileMode.Create, FileAccess.Write, FileShare.None, RandomAccess.GetLength(source));
+
+        //    var buffers = new List<Memory<byte>>
+        //    {
+        //        ArrayPool<byte>.Shared.Rent(64_000),
+        //        ArrayPool<byte>.Shared.Rent(64_000),
+        //        ArrayPool<byte>.Shared.Rent(64_000),
+        //        ArrayPool<byte>.Shared.Rent(64_000),
+        //    };
+
+        //    long bytesRead = 0, offset = 0;
+        //    while ((bytesRead = RandomAccess.Read(source, buffers)) != 0)
+        //        destination.Write(destination, buffers, offset);
+
+        //    ArrayPool<byte>.Shared.Return(buffer);
+        //}
     }
 }
