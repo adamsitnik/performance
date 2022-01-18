@@ -3,8 +3,14 @@
 // See the LICENSE file in the project root for more information.
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Columns;
+using BenchmarkDotNet.Reports;
+using BenchmarkDotNet.Running;
+using BenchmarkDotNet.Extensions;
 using MicroBenchmarks;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace System.IO.Compression
 {
@@ -70,6 +76,8 @@ namespace System.IO.Compression
     }
 
     [BenchmarkCategory(Categories.Libraries, Categories.NoWASM)]
+    [SkipTooManyTestCasesValidator]
+    [SizeColumn]
     public class BrotliDefaults
     {
         public IEnumerable<string> UncompressedTestFileNames()
@@ -117,6 +125,7 @@ namespace System.IO.Compression
                 throw new Exception("bug");
             }
             Array.Resize(ref compressedData, bytesWritten);
+            Console.WriteLine($"// SIZE: {bytesWritten}");
         }
 
         [Benchmark]
@@ -163,5 +172,51 @@ namespace System.IO.Compression
         [Benchmark]
         public bool Decompress_WithoutState()
             => BrotliDecoder.TryDecompress(compressedData, uncompressedData, out int _);
+    }
+
+    public class SizeColumnAttribute : ColumnConfigBaseAttribute
+    {
+        public SizeColumnAttribute() : base(new SizeColumn())
+        {
+        }
+    }
+
+    public class SizeColumn : IColumn
+    {
+        public string ColumnName => "Size";
+        public string Id => nameof(SizeColumn);
+        public string Legend => "Size of the compressed data";
+        public bool IsNumeric => true;
+        public bool IsDefault(Summary summary, BenchmarkCase benchmark) => true;
+        public bool IsAvailable(Summary summary) => true;
+        public bool AlwaysShow => true;
+        public ColumnCategory Category => ColumnCategory.Custom;
+        public int PriorityInCategory => 1;
+        public UnitType UnitType => UnitType.Size;
+        public string GetValue(Summary summary, BenchmarkCase benchmark) => GetValue(summary, benchmark, null);
+        public override string ToString() => ColumnName;
+
+        public string GetValue(Summary summary, BenchmarkCase benchmark, SummaryStyle style)
+        {
+            if (!summary.HasReport(benchmark))
+                return "-";
+
+            var results = summary[benchmark].ExecuteResults;
+            if (results.Count != 1)
+                return "-";
+
+            var result = results.Single();
+            var buffer = new StringBuilder();
+
+            foreach (var line in result.ExtraOutput)
+            {
+                if (line.StartsWith("// SIZE: "))
+                {
+                    buffer.Append(line.Substring("// SIZE: ".Length));
+                }
+            }
+
+            return buffer.Length > 0 ? buffer.ToString() : "-";
+        }
     }
 }
