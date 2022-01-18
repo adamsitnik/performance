@@ -52,6 +52,21 @@ namespace System.IO.Compression
             yield return "TestDocument.pdf"; // 199 KB small test document with repeated paragraph, PDF are common
             yield return "alice29.txt"; // 145 KB, copy of "ALICE'S ADVENTURES IN WONDERLAND" book, an example of text file
             yield return "sum"; // 37.3 KB, some binary content, an example of binary file
+            yield return "10x10y";
+            yield return "64x";
+            yield return "backward65536";
+            yield return "compressed_file";
+            yield return "compressed_repeated";
+            yield return "empty";
+            yield return "mapsdatazrh";
+            yield return "monkey";
+            yield return "quickfox";
+            yield return "quickfox_repeated";
+            yield return "random_org_10k.bin";
+            yield return "x";
+            yield return "ukkonooa";
+            yield return "xyzzy";
+            yield return "zeros";
         }
 
         [Benchmark]
