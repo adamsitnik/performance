@@ -1,9 +1,6 @@
 using BenchmarkDotNet.Filters;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using BenchmarkDotNet.Running;
-
 
 public class PartitionFilter : IFilter
 {
@@ -22,6 +19,10 @@ public class PartitionFilter : IFilter
         if (!_partitionsCount.HasValue || !_partitionIndex.HasValue)
             return true; // the filter is not enabled so it does not filter anything out and can be added to RecommendedConfig
 
-        return _counter++ % _partitionsCount.Value == _partitionIndex.Value; // will return true only for benchmarks that belong to it’s partition
+        bool result = _counter++ % _partitionsCount.Value == _partitionIndex.Value; // will return true only for benchmarks that belong to it’s partition
+
+        Console.WriteLine($"{_counter} {result} {benchmarkCase.Descriptor.DisplayInfo}: {benchmarkCase.Parameters.DisplayInfo}");
+
+        return result;
     }
 }
