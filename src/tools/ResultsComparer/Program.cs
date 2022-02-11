@@ -52,13 +52,13 @@ namespace ResultsComparer
             {
                 var basePaths = new List<string>();
                 var diffPaths = new List<string>();
-                foreach (var netcoreapp31Folder in Directory.GetDirectories(args.Input, "net50*"))
+                foreach (var baseline in Directory.GetDirectories(args.Input, "*net60"))
                 {
-                    var netcoreapp50Folder = netcoreapp31Folder.Replace("net50", "net60");
-                    if (Directory.Exists(netcoreapp50Folder))
+                    var current = baseline.Replace("net60", "net70");
+                    if (Directory.Exists(current))
                     {
-                        basePaths.Add(netcoreapp31Folder);
-                        diffPaths.Add(netcoreapp50Folder);
+                        basePaths.Add(baseline);
+                        diffPaths.Add(current);
                     }
                 }
 
@@ -207,6 +207,7 @@ namespace ResultsComparer
             {
                 case EquivalenceTestConclusion.Base:
                 case EquivalenceTestConclusion.Same:
+                case EquivalenceTestConclusion.Unknown:
                     return 0;
                 case EquivalenceTestConclusion.Faster:
                     double improvementXtimes = baseResult.Statistics.Median / diffResult.Statistics.Median;
