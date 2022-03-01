@@ -48,7 +48,7 @@ namespace BenchmarkDotNet.Extensions
                     .WithRuntime(CoreRtRuntime.CoreRt70);
 
                 // See https://github.com/dotnet/roslyn/issues/42393
-                job = job.WithArguments(new Argument[] { new MsBuildArgument("/p:DebugType=portable"), new MsBuildArgument("-bl:benchmarkdotnet.binlog") });
+                //job = job.WithArguments(new Argument[] { new MsBuildArgument("/p:DebugType=portable"), new MsBuildArgument("-bl:benchmarkdotnet.binlog") });
             }
 
             var config = ManualConfig.CreateEmpty()
