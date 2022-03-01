@@ -13,6 +13,9 @@ using BenchmarkDotNet.Loggers;
 using System.Linq;
 using BenchmarkDotNet.Exporters;
 using System;
+using BenchmarkDotNet.Toolchains.CoreRt;
+using Microsoft.Diagnostics.Tracing.Parsers.FrameworkEventSource;
+using BenchmarkDotNet.Environments;
 
 namespace BenchmarkDotNet.Extensions
 {
@@ -30,12 +33,19 @@ namespace BenchmarkDotNet.Extensions
         {
             if (job is null)
             {
+                Toolchains.IToolchain toolchain = new CoreRtToolchainBuilder()
+                    .UseCoreRtNuGet("7.0.0-*", "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet7/nuget/v3/index.json")
+                    .TargetFrameworkMoniker("net7.0")
+                    .ToToolchain();
+
                 job = Job.Default
                     .WithWarmupCount(1) // 1 warmup is enough for our purpose
                     .WithIterationTime(TimeInterval.FromMilliseconds(250)) // the default is 0.5s per iteration, which is slighlty too much for us
                     .WithMinIterationCount(15)
                     .WithMaxIterationCount(20) // we don't want to run more that 20 iterations
-                    .DontEnforcePowerPlan(); // make sure BDN does not try to enforce High Performance power plan on Windows
+                    .DontEnforcePowerPlan() // make sure BDN does not try to enforce High Performance power plan on Windows
+                    .WithToolchain(toolchain)
+                    .WithRuntime(CoreRtRuntime.CoreRt70);
 
                 // See https://github.com/dotnet/roslyn/issues/42393
                 job = job.WithArguments(new Argument[] { new MsBuildArgument("/p:DebugType=portable"), new MsBuildArgument("-bl:benchmarkdotnet.binlog") });
