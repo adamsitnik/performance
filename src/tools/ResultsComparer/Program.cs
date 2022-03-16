@@ -99,7 +99,7 @@ namespace ResultsComparer
                         BaseMedian = result.baseResult.Statistics.Median,
                         DiffMedian = result.diffResult.Statistics.Median,
                         Ratio = result.baseResult.Statistics.Median / result.diffResult.Statistics.Median,
-                        AllocatedDiff = (result.diffResult.Memory.BytesAllocatedPerOperation - result.baseResult.Memory.BytesAllocatedPerOperation).ToString("+0;-#"),
+                        AllocatedDiff = GetAllocatedDiff(result.diffResult, result.baseResult),
                         Modality = GetModalInfo(result.baseResult) ?? GetModalInfo(result.diffResult),
                         OperatingSystem = Simplify(result.baseEnv.OsVersion),
                         Architecture = result.baseEnv.Architecture,
@@ -115,6 +115,30 @@ namespace ResultsComparer
                     Console.WriteLine($"| {line.TrimStart()}|"); // the table starts with \t and does not end with '|' and it looks bad so we fix it
 
                 Console.WriteLine();
+            }
+        }
+
+        private static string GetAllocatedDiff(Benchmark diffResult, Benchmark baseResult)
+        {
+            long baseline = baseResult.Memory.BytesAllocatedPerOperation;
+            if (baseline == 0)
+                baseline = GetMetricValue(baseResult);
+            long diff = diffResult.Memory.BytesAllocatedPerOperation;
+            if (diff == 0)
+                diff = GetMetricValue(diffResult);
+
+            return (diff - baseline).ToString("+0;-#");
+
+            static long GetMetricValue(Benchmark result)
+            {
+                if (result.Metrics == null)
+                    return 0;
+
+                double value = result.Metrics.Single(metric => metric.Descriptor.Id == "Allocated Memory").Value;
+                if (value < 1.0)
+                    return 0;
+
+                return (long)value;
             }
         }
 
