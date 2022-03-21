@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
-using System.IO;
 using CommandLine;
 using CommandLine.Text;
 
@@ -31,6 +30,9 @@ namespace ResultsComparer
 
         [Option('f', "filter", HelpText = "Filter the benchmarks by name using glob pattern(s). Optional.")]
         public IEnumerable<string> Filters { get; set; }
+
+        [Option("stats", HelpText = "Prints summary per Architecture, Namespace and Operating System. Optional.")]
+        public bool PrintStats { get; set; }
 
         [Usage(ApplicationAlias = "")]
         public static IEnumerable<Example> Examples

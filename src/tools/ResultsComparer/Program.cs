@@ -79,15 +79,23 @@ namespace ResultsComparer
             Console.WriteLine("* Base V = Base Runtime Version");
             Console.WriteLine("* Diff V = Diff Runtime Version");
             Console.WriteLine();
+
+            Stats stats = new Stats();
             
             foreach(var benchmarkResults in args.BasePaths
-                .SelectMany((basePath, index) => GetResults(basePath, args.DiffPaths.ElementAt(index), testThreshold, noiseThreshold, filters))
+                .SelectMany((basePath, index) => GetResults(basePath, args.DiffPaths.ElementAt(index), testThreshold, noiseThreshold, filters, stats))
                 .GroupBy(result => result.id, StringComparer.InvariantCulture)
                 //.Where(group => group.Any(result => result.conclusion == EquivalenceTestConclusion.Slower))
                 //.Where(group => !group.All(result => result.conclusion == EquivalenceTestConclusion.Same || result.conclusion == EquivalenceTestConclusion.Base)) // we are not interested in things that did not change
                 .Take(args.TopCount ?? int.MaxValue)
                 .OrderBy(group => group.Sum(result => Score(result.conclusion, result.baseEnv, result.baseResult, result.diffResult))))
             {
+                if (args.PrintStats)
+                {
+                    stats.Print();
+                    args.PrintStats = false; // print them only once
+                }
+
                 Console.WriteLine($"## {benchmarkResults.Key}");
                 Console.WriteLine();
 
@@ -101,7 +109,7 @@ namespace ResultsComparer
                         Ratio = result.baseResult.Statistics.Median / result.diffResult.Statistics.Median,
                         AllocatedDiff = GetAllocatedDiff(result.diffResult, result.baseResult),
                         Modality = GetModalInfo(result.baseResult) ?? GetModalInfo(result.diffResult),
-                        OperatingSystem = Simplify(result.baseEnv.OsVersion),
+                        OperatingSystem = Stats.GetSimplifiedOSName(result.baseEnv.OsVersion),
                         Architecture = result.baseEnv.Architecture,
                         ProcessorName = result.baseEnv.ProcessorName,
                         BaseRuntimeVersion = GetSimplifiedRuntimeVersion(result.baseEnv.RuntimeVersion),
@@ -143,7 +151,7 @@ namespace ResultsComparer
         }
 
         private static IEnumerable<(string id, Benchmark baseResult, Benchmark diffResult, EquivalenceTestConclusion conclusion, HostEnvironmentInfo baseEnv, HostEnvironmentInfo diffEnv)> GetResults(
-            string basePath, string diffPath, Threshold testThreshold, Threshold noiseThreshold, IEnumerable<Regex> filters)
+            string basePath, string diffPath, Threshold testThreshold, Threshold noiseThreshold, IEnumerable<Regex> filters, Stats stats)
         {
             foreach (var info in ReadResults(basePath, diffPath, filters)
                 .Where(result => result.baseResult.Statistics != null && result.diffResult.Statistics != null)) // failures
@@ -161,10 +169,13 @@ namespace ResultsComparer
                 var userTresholdResult = StatisticalTestHelper.CalculateTost(MannWhitneyTest.Instance, baseValues, diffValues, testThreshold);
                 var noiseResult = StatisticalTestHelper.CalculateTost(MannWhitneyTest.Instance, baseValues, diffValues, noiseThreshold);
 
-                if (noiseResult.Conclusion == EquivalenceTestConclusion.Same) // filter noise (0.20 ns vs 0.25ns etc)
-                    yield return (info.id, info.baseResult, info.diffResult, noiseResult.Conclusion, info.baseEnv, info.diffEnv);
-                else
-                    yield return (info.id, info.baseResult, info.diffResult, userTresholdResult.Conclusion, info.baseEnv, info.diffEnv);
+                var conclusion = noiseResult.Conclusion == EquivalenceTestConclusion.Same // filter noise (0.20 ns vs 0.25ns etc)
+                    ? noiseResult.Conclusion
+                    : userTresholdResult.Conclusion;
+
+                stats.Record(conclusion, info.baseEnv, info.baseResult);
+
+                yield return (info.id, info.baseResult, info.diffResult, conclusion, info.baseEnv, info.diffEnv);
             }
         }
 
@@ -288,8 +299,6 @@ namespace ResultsComparer
                 return 7;
             }
         }
-
-        private static string Simplify(string text) => text.Split('(')[0];
 
         private static string GetSimplifiedRuntimeVersion(string text)
         {

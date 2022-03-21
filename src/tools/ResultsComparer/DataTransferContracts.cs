@@ -121,7 +121,7 @@ namespace DataTransferContracts // generated with http://json2csharp.com/#
     public class Benchmark
     {
         public string DisplayInfo { get; set; }
-        public object Namespace { get; set; }
+        public string Namespace { get; set; }
         public string Type { get; set; }
         public string Method { get; set; }
         public string MethodTitle { get; set; }
