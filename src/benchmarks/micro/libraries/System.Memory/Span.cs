@@ -18,7 +18,7 @@ namespace System.Memory
     public class Span<T> 
         where T : struct, IComparable<T>, IEquatable<T>
     {
-        [Params(Utils.DefaultCollectionSize)]
+        [Params(1, 4, 8, 32, 33, 63, 64, 512)]
         public int Size;
 
         private T[] _array, _same, _emptyWithSingleValue;
@@ -95,7 +95,7 @@ namespace System.Memory
             _emptyWithSingleValue = new T[Size];
             _emptyWithSingleValue[Size - 1] = _notDefaultValue;
         }
-        
+
         [Benchmark]
         public int BinarySearch() => new System.Span<T>(_emptyWithSingleValue).BinarySearch(_notDefaultValue);
 
