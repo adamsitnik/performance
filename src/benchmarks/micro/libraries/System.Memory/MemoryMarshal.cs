@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
@@ -59,7 +60,46 @@ namespace System.Memory
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void Consume(in TestStructExplicit _) { }
     }
-    
+
+#if NET7_0_OR_GREATER
+    [BenchmarkCategory(Categories.Runtime, Categories.Libraries, Categories.Span, Categories.NoWASM)]
+    public class NullTerminated
+    {
+        [Params(8, 32, 512)]
+        public int Count;
+
+        private byte[] _bytes;
+        private char[] _chars;
+
+        [GlobalSetup]
+        public void Setup()
+        {
+            _bytes = Enumerable.Repeat((byte)1, Count).ToArray();
+            _bytes[_bytes.Length - 1] = 0;
+            _chars = Enumerable.Repeat((char)1, Count).ToArray();
+            _chars[_chars.Length - 1] = '\0';
+        }
+
+        [Benchmark]
+        public unsafe ReadOnlySpan<byte> CreateReadOnlySpanFromNullTerminated_Bytes()
+        {
+            fixed (byte* pBytes =_bytes)
+            {
+                return MemoryMarshal.CreateReadOnlySpanFromNullTerminated(pBytes);
+            }
+        }
+
+        [Benchmark]
+        public unsafe ReadOnlySpan<char> CreateReadOnlySpanFromNullTerminated_Chars()
+        {
+            fixed (char* pChars = _chars)
+            {
+                return MemoryMarshal.CreateReadOnlySpanFromNullTerminated(pChars);
+            }
+        }
+    }
+#endif
+
     [StructLayout(LayoutKind.Explicit)]
     internal struct TestStructExplicit
     {
