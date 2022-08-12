@@ -32,7 +32,7 @@ namespace System.Collections
         private ImmutableList<T> _immutableList;
         private ImmutableSortedSet<T> _immutableSortedSet;
 
-        [Params(Utils.DefaultCollectionSize)]
+        [Params(8, 32, 512)]
         public int Size;
 
         [GlobalSetup(Targets = new[] { nameof(Array), "Span" })]
