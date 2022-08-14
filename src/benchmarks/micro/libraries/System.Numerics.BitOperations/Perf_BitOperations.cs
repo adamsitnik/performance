@@ -8,6 +8,8 @@ using MicroBenchmarks;
 using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Extensions;
 using System.Runtime.Intrinsics;
+using System;
+using System.Memory;
 
 namespace System.Numerics.Tests
 {
@@ -118,36 +120,40 @@ namespace System.Numerics.Tests
     [BenchmarkCategory(Categories.Libraries, Categories.SIMD, Categories.JIT)]
     public class Repro
     {
-        private byte[] _bytes = new byte[1024];
-        private short[] _shorts = new short[512];
+        private byte[] _bytes;
+        private short[] _shorts;
 
-        [Benchmark]
-        public int Byte_FirstIndex()
+        public Repro()
         {
-            _bytes[^1] = 1; 
-            return IndexOfValueType<byte, DontNegate<byte>>(ref _bytes[0], 1, _bytes.Length);
+            _bytes = new byte[512];
+            _bytes[_bytes.Length / 2] = 1;
+            _shorts = new short[512];
+            _shorts[_shorts.Length / 2] = 1;
         }
 
         [Benchmark]
-        public int Byte_Lastndex()
-        {
-            _bytes[0] = 1;
-            return LastIndexOfValueType<byte, DontNegate<byte>>(ref _bytes[0], 1, _bytes.Length);
-        }
+        public int Byte_FirstIndex_BuiltIn() => new ReadOnlySpan<byte>(_bytes).IndexOf((byte)1);
 
         [Benchmark]
-        public int Short_FirstIndex()
-        {
-            _shorts[^1] = 1;
-            return IndexOfValueType<short, DontNegate<short>>(ref _shorts[0], 1, _shorts.Length);
-        }
+        public int Byte_Lastndex_BuiltIn() => new ReadOnlySpan<byte>(_bytes).LastIndexOf((byte)1);
 
         [Benchmark]
-        public int Short_Lastndex()
-        {
-            _shorts[0] = 1;
-            return LastIndexOfValueType<short, DontNegate<short>>(ref _shorts[0], 1, _shorts.Length);
-        }
+        public int Short_FirstIndex_BuiltIn() => new ReadOnlySpan<short>(_shorts).IndexOf((short)1);
+
+        [Benchmark]
+        public int Short_Lastndex_BuiltIn() => new ReadOnlySpan<short>(_shorts).LastIndexOf((short)1);
+
+        [Benchmark]
+        public int Byte_FirstIndex() => IndexOfValueType<byte, DontNegate<byte>>(ref _bytes[0], 1, _bytes.Length);
+
+        [Benchmark]
+        public int Byte_Lastndex() => LastIndexOfValueType<byte, DontNegate<byte>>(ref _bytes[0], 1, _bytes.Length);
+
+        [Benchmark]
+        public int Short_FirstIndex() => IndexOfValueType<short, DontNegate<short>>(ref _shorts[0], 1, _shorts.Length);
+
+        [Benchmark]
+        public int Short_Lastndex() => LastIndexOfValueType<short, DontNegate<short>>(ref _shorts[0], 1, _shorts.Length);
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private static int IndexOfValueType<T, N>(ref T searchSpace, T value, int length)
