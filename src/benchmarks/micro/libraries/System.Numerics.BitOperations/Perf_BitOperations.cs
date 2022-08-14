@@ -122,28 +122,30 @@ namespace System.Numerics.Tests
         private short[] _shorts = new short[1024];
 
         [Benchmark]
-        public int Byte_FirstIndex() => CallComputeFirstIndexALot(_bytes);
+        public int Byte_FirstIndex() => CallComputeFirstIndexALot<byte>(_bytes, 1);
 
         [Benchmark]
-        public int Byte_Lastndex() => CallComputeLastIndexALot(_bytes);
+        public int Byte_Lastndex() => CallComputeLastIndexALot<byte>(_bytes, 1);
 
         [Benchmark]
-        public int Short_FirstIndex() => CallComputeFirstIndexALot(_shorts);
+        public int Short_FirstIndex() => CallComputeFirstIndexALot<short>(_shorts, 1);
 
         [Benchmark]
-        public int Short_Lastndex() => CallComputeLastIndexALot(_shorts);
+        public int Short_Lastndex() => CallComputeLastIndexALot<short>(_shorts, 1);
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private static int CallComputeFirstIndexALot<T>(T[] array) where T : struct
+        private static int CallComputeFirstIndexALot<T>(T[] array, T value) where T : struct
         {
             ref T searchSpace = ref array[0];
             ref T currentSearchSpace = ref array[0];
             ref T oneVectorAwayFromEnd = ref Unsafe.Add(ref searchSpace, array.Length - Vector128<T>.Count);
             int result = 0;
+            Vector128<T> values = Vector128.Create(value);
 
             do
             {
-                result += ComputeFirstIndex(ref searchSpace, ref currentSearchSpace, Vector128.LoadUnsafe(ref currentSearchSpace));
+                Vector128<T> equals = Vector128.Equals(Vector128.LoadUnsafe(ref currentSearchSpace), values);
+                result += ComputeFirstIndex(ref searchSpace, ref currentSearchSpace, equals);
                 currentSearchSpace = ref Unsafe.Add(ref currentSearchSpace, Vector128<T>.Count);
             }
             while (!Unsafe.IsAddressGreaterThan(ref currentSearchSpace, ref oneVectorAwayFromEnd));
@@ -152,15 +154,17 @@ namespace System.Numerics.Tests
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private static int CallComputeLastIndexALot<T>(T[] array) where T : struct
+        private static int CallComputeLastIndexALot<T>(T[] array, T value) where T : struct
         {
             ref T searchSpace = ref array[0];
             ref T currentSearchSpace = ref Unsafe.Add(ref searchSpace, array.Length - Vector128<T>.Count);
             int result = 0;
+            Vector128<T> values = Vector128.Create(value);
 
             do
             {
-                result += ComputeLastIndex(ref searchSpace, ref currentSearchSpace, Vector128.LoadUnsafe(ref currentSearchSpace));
+                Vector128<T> equals = Vector128.Equals(Vector128.LoadUnsafe(ref currentSearchSpace), values);
+                result += ComputeLastIndex(ref searchSpace, ref currentSearchSpace, equals);
                 currentSearchSpace = ref Unsafe.Subtract(ref currentSearchSpace, Vector128<T>.Count);
             }
             while (!Unsafe.IsAddressLessThan(ref currentSearchSpace, ref searchSpace));
