@@ -160,44 +160,7 @@ namespace System.Numerics.Tests
         {
             if (!Vector128.IsHardwareAccelerated || length < Vector128<T>.Count)
             {
-                nuint offset = 0;
-
-                while (length >= 8)
-                {
-                    length -= 8;
-
-                    if (Unsafe.Add(ref searchSpace, offset + 0) == value) return (int)offset;
-                    if (Unsafe.Add(ref searchSpace, offset + 1) == value) return (int)offset + 1;
-                    if (Unsafe.Add(ref searchSpace, offset + 2) == value) return (int)offset + 2;
-                    if (Unsafe.Add(ref searchSpace, offset + 3) == value) return (int)offset + 3;
-                    if (Unsafe.Add(ref searchSpace, offset + 4) == value) return (int)offset + 4;
-                    if (Unsafe.Add(ref searchSpace, offset + 5) == value) return (int)offset + 5;
-                    if (Unsafe.Add(ref searchSpace, offset + 6) == value) return (int)offset + 6;
-                    if (Unsafe.Add(ref searchSpace, offset + 7) == value) return (int)offset + 7;
-
-                    offset += 8;
-                }
-
-                if (length >= 4)
-                {
-                    length -= 4;
-
-                    if (Unsafe.Add(ref searchSpace, offset + 0) == value) return (int)offset;
-                    if (Unsafe.Add(ref searchSpace, offset + 1) == value) return (int)offset + 1;
-                    if (Unsafe.Add(ref searchSpace, offset + 2) == value) return (int)offset + 2;
-                    if (Unsafe.Add(ref searchSpace, offset + 3) == value) return (int)offset + 3;
-
-                    offset += 4;
-                }
-
-                while (length > 0)
-                {
-                    length -= 1;
-
-                    if (Unsafe.Add(ref searchSpace, offset) == value) return (int)offset;
-
-                    offset += 1;
-                }
+                // removed for brevity
             }
             else
             {
@@ -239,44 +202,7 @@ namespace System.Numerics.Tests
         {
             if (!Vector128.IsHardwareAccelerated || length < Vector128<T>.Count)
             {
-                nuint offset = (nuint)length - 1;
-
-                while (length >= 8)
-                {
-                    length -= 8;
-
-                    if (Unsafe.Add(ref searchSpace, offset - 0) == value) return (int)offset - 0;
-                    if (Unsafe.Add(ref searchSpace, offset - 1) == value) return (int)offset - 1;
-                    if (Unsafe.Add(ref searchSpace, offset - 2) == value) return (int)offset - 2;
-                    if (Unsafe.Add(ref searchSpace, offset - 3) == value) return (int)offset - 3;
-                    if (Unsafe.Add(ref searchSpace, offset - 4) == value) return (int)offset - 4;
-                    if (Unsafe.Add(ref searchSpace, offset - 5) == value) return (int)offset - 5;
-                    if (Unsafe.Add(ref searchSpace, offset - 6) == value) return (int)offset - 6;
-                    if (Unsafe.Add(ref searchSpace, offset - 7) == value) return (int)offset - 7;
-
-                    offset -= 8;
-                }
-
-                if (length >= 4)
-                {
-                    length -= 4;
-
-                    if (Unsafe.Add(ref searchSpace, offset) == value) return (int)offset;
-                    if (Unsafe.Add(ref searchSpace, offset - 1) == value) return (int)offset - 1;
-                    if (Unsafe.Add(ref searchSpace, offset - 2) == value) return (int)offset - 2;
-                    if (Unsafe.Add(ref searchSpace, offset - 3) == value) return (int)offset - 3;
-
-                    offset -= 4;
-                }
-
-                while (length > 0)
-                {
-                    length -= 1;
-
-                    if (Unsafe.Add(ref searchSpace, offset).Equals(value)) return (int)offset;
-
-                    offset -= 1;
-                }
+                // removed for brevity
             }
             else
             {
