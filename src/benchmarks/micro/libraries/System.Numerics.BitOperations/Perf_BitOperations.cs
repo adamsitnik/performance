@@ -7,6 +7,7 @@ using BenchmarkDotNet.Attributes;
 using MicroBenchmarks;
 using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Extensions;
+using System.Runtime.Intrinsics;
 
 namespace System.Numerics.Tests
 {
@@ -112,4 +113,76 @@ namespace System.Numerics.Tests
             return sum;
         }
     }
+
+#if NET7_0_OR_GREATER
+    [BenchmarkCategory(Categories.Libraries, Categories.SIMD, Categories.JIT)]
+    public class Repro
+    {
+        private byte[] _bytes = new byte[1024];
+        private short[] _shorts = new short[1024];
+
+        [Benchmark]
+        public int Byte_FirstIndex() => CallComputeFirstIndexALot(_bytes);
+
+        [Benchmark]
+        public int Byte_Lastndex() => CallComputeLastIndexALot(_bytes);
+
+        [Benchmark]
+        public int Short_FirstIndex() => CallComputeFirstIndexALot(_shorts);
+
+        [Benchmark]
+        public int Short_Lastndex() => CallComputeLastIndexALot(_shorts);
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        private static int CallComputeFirstIndexALot<T>(T[] array) where T : struct
+        {
+            ref T searchSpace = ref array[0];
+            ref T currentSearchSpace = ref array[0];
+            ref T oneVectorAwayFromEnd = ref Unsafe.Add(ref searchSpace, array.Length - Vector128<T>.Count);
+            int result = 0;
+
+            do
+            {
+                result += ComputeFirstIndex(ref searchSpace, ref currentSearchSpace, Vector128.LoadUnsafe(ref currentSearchSpace));
+                currentSearchSpace = ref Unsafe.Add(ref currentSearchSpace, Vector128<T>.Count);
+            }
+            while (!Unsafe.IsAddressGreaterThan(ref currentSearchSpace, ref oneVectorAwayFromEnd));
+
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        private static int CallComputeLastIndexALot<T>(T[] array) where T : struct
+        {
+            ref T searchSpace = ref array[0];
+            ref T currentSearchSpace = ref Unsafe.Add(ref searchSpace, array.Length - Vector128<T>.Count);
+            int result = 0;
+
+            do
+            {
+                result += ComputeLastIndex(ref searchSpace, ref currentSearchSpace, Vector128.LoadUnsafe(ref currentSearchSpace));
+                currentSearchSpace = ref Unsafe.Subtract(ref currentSearchSpace, Vector128<T>.Count);
+            }
+            while (!Unsafe.IsAddressLessThan(ref currentSearchSpace, ref searchSpace));
+
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ComputeFirstIndex<T>(ref T searchSpace, ref T current, Vector128<T> equals) where T : struct
+        {
+            uint notEqualsElements = equals.ExtractMostSignificantBits();
+            int index = BitOperations.TrailingZeroCount(notEqualsElements);
+            return index + (int)((long)Unsafe.ByteOffset(ref searchSpace, ref current) / Unsafe.SizeOf<T>());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ComputeLastIndex<T>(ref T searchSpace, ref T current, Vector128<T> equals) where T : struct
+        {
+            uint notEqualsElements = equals.ExtractMostSignificantBits();
+            int index = 31 - BitOperations.LeadingZeroCount(notEqualsElements); // 31 = 32 (bits in Int32) - 1 (indexing from zero)
+            return (int)((long)Unsafe.ByteOffset(ref searchSpace, ref current) / Unsafe.SizeOf<T>()) + index;
+        }
+    }
+#endif
 }
