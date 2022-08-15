@@ -18,7 +18,6 @@ namespace System.Memory
     public class Span<T> 
         where T : struct, IComparable<T>, IEquatable<T>
     {
-        //[Params(4, 8, 12)]
         [Params(4, 8, 12, 32, 64, 512)]
         public int Size;
 
@@ -57,7 +56,7 @@ namespace System.Memory
         [Benchmark]
         public bool EndsWith() => new System.Span<T>(_array).EndsWith(new System.ReadOnlySpan<T>(_same).Slice(start: Size / 2));
 
-        [GlobalSetup(Targets = new [] { nameof(IndexOfValue), nameof(LastIndexOfValue), nameof(LastIndexOfAnyValues),
+        [GlobalSetup(Targets = new [] { nameof(IndexOfValue), nameof(LastIndexOfValue), nameof(LastIndexOfTwoValues), nameof(LastIndexOfThreeValues), nameof(LastIndexOfAnyFourValues),
             nameof(IndexOfAnyTwoValues), nameof(IndexOfAnyThreeValues), nameof(IndexOfAnyFourValues), nameof(IndexOfAnyFiveValues) })]
         public void SetupIndexOf()
         {
@@ -87,8 +86,14 @@ namespace System.Memory
         public int LastIndexOfValue() => new System.Span<T>(_emptyWithSingleValue).LastIndexOf(_notDefaultValue);
 
         [Benchmark]
-        public int LastIndexOfAnyValues() => new System.Span<T>(_emptyWithSingleValue).LastIndexOfAny(_notDefaultValue, _notDefaultValue);
-        
+        public int LastIndexOfTwoValues() => new System.Span<T>(_emptyWithSingleValue).LastIndexOfAny(_notDefaultValue, _notDefaultValue);
+
+        [Benchmark]
+        public int LastIndexOfThreeValues() => new System.Span<T>(_emptyWithSingleValue).LastIndexOfAny(_notDefaultValue, _notDefaultValue, _notDefaultValue);
+
+        [Benchmark]
+        public int LastIndexOfAnyFourValues() => new System.Span<T>(_emptyWithSingleValue).IndexOfAny(new ReadOnlySpan<T>(_fourValues));
+
         [GlobalSetup(Target = nameof(BinarySearch))]
         public void SetupBinarySearch()
         {
