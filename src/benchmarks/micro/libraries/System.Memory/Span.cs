@@ -124,74 +124,35 @@ namespace System.Memory
     }
 
 #if NET7_0_OR_GREATER
+    [GenericTypeArguments(typeof(byte))]
+    [GenericTypeArguments(typeof(char))]
+    [GenericTypeArguments(typeof(int))]
     [BenchmarkCategory(Categories.Runtime, Categories.Libraries, Categories.Span)]
-    public class Experiment
+    public class Experiment<V>
+        where V : struct, IComparable<V>, IEquatable<V>
     {
         [Params(4, 8, 12)]
         public int Size;
 
-        private char[] _array;
+        private V[] _array;
+        private V _nonDefaultValue;
 
         [GlobalSetup]
-        public void Setup() => _array = new char[Size];
-
-        [Benchmark(Baseline = true)]
-        public int BuiltIn() => new ReadOnlySpan<char>(_array).IndexOf('a');
-
-        [Benchmark()]
-        public int Current() => Current<short>(ref Unsafe.As<char, short>(ref _array[0]), (short)'a', _array.Length);
-
-        [Benchmark()]
-        public int Copy() => IndexOfValueType<short>(ref Unsafe.As<char, short>(ref _array[0]), (short)'a', _array.Length);
-
-        [Benchmark()]
-        public int FullCopy() => MemExtensions.IndexOfCopy(_array, 'a');
-
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private static int Current<T>(ref T searchSpace, T value, int length) where T : struct, INumber<T>
+        public void Setup()
         {
-            nuint offset = 0;
-
-            while (length >= 8)
-            {
-                length -= 8;
-
-                if (Unsafe.Add(ref searchSpace, offset) == value) return (int)offset;
-                if (Unsafe.Add(ref searchSpace, offset + 1) == value) return (int)offset + 1;
-                if (Unsafe.Add(ref searchSpace, offset + 2) == value) return (int)offset + 2;
-                if (Unsafe.Add(ref searchSpace, offset + 3) == value) return (int)offset + 3;
-                if (Unsafe.Add(ref searchSpace, offset + 4) == value) return (int)offset + 4;
-                if (Unsafe.Add(ref searchSpace, offset + 5) == value) return (int)offset + 5;
-                if (Unsafe.Add(ref searchSpace, offset + 6) == value) return (int)offset + 6;
-                if (Unsafe.Add(ref searchSpace, offset + 7) == value) return (int)offset + 7;
-
-                offset += 8;
-            }
-
-            if (length >= 4)
-            {
-                length -= 4;
-
-                if (Unsafe.Add(ref searchSpace, offset) == value) return (int)offset;
-                if (Unsafe.Add(ref searchSpace, offset + 1) == value) return (int)offset + 1;
-                if (Unsafe.Add(ref searchSpace, offset + 2) == value) return (int)offset + 2;
-                if (Unsafe.Add(ref searchSpace, offset + 3) == value) return (int)offset + 3;
-
-                offset += 4;
-            }
-
-            while (length > 0)
-            {
-                length -= 1;
-
-                if (Unsafe.Add(ref searchSpace, offset).Equals(value)) return (int)offset;
-
-                offset += 1;
-            }
-            
-            return -1;
+            _array = new V[Size];
+            _nonDefaultValue = ValuesGenerator.GetNonDefaultValue<V>();
         }
 
+        [Benchmark(Baseline = true)]
+        public int BuiltIn() => new ReadOnlySpan<V>(_array).IndexOf(_nonDefaultValue);
+
+        [Benchmark()]
+        public int Copy() => MemExtensions.IndexOfCopy(new ReadOnlySpan<V>(_array), _nonDefaultValue);
+    }
+
+    public static class SpanHelpers
+    {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int IndexOfValueType<T>(ref T searchSpace, T value, int length) where T : struct, INumber<T>
             => IndexOfValueType<T, DontNegate<T>>(ref searchSpace, value, length);
@@ -351,6 +312,7 @@ namespace System.Memory
         }
     }
 
+
     public static class MemExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -359,25 +321,25 @@ namespace System.Memory
             //if (RuntimeHelpers.IsBitwiseEquatable<T>())
             {
                 if (Unsafe.SizeOf<T>() == sizeof(byte))
-                    return Experiment.IndexOfValueType(
+                    return SpanHelpers.IndexOfValueType(
                         ref Unsafe.As<T, byte>(ref System.Runtime.InteropServices.MemoryMarshal.GetReference(span)),
                         Unsafe.As<T, byte>(ref value),
                         span.Length);
 
                 if (Unsafe.SizeOf<T>() == sizeof(short))
-                    return Experiment.IndexOfValueType(
+                    return SpanHelpers.IndexOfValueType(
                         ref Unsafe.As<T, short>(ref System.Runtime.InteropServices.MemoryMarshal.GetReference(span)),
                         Unsafe.As<T, short>(ref value),
                         span.Length);
 
                 if (Unsafe.SizeOf<T>() == sizeof(int))
-                    return Experiment.IndexOfValueType(
+                    return SpanHelpers.IndexOfValueType(
                         ref Unsafe.As<T, int>(ref System.Runtime.InteropServices.MemoryMarshal.GetReference(span)),
                         Unsafe.As<T, int>(ref value),
                         span.Length);
 
                 if (Unsafe.SizeOf<T>() == sizeof(long))
-                    return Experiment.IndexOfValueType(
+                    return SpanHelpers.IndexOfValueType(
                         ref Unsafe.As<T, long>(ref System.Runtime.InteropServices.MemoryMarshal.GetReference(span)),
                         Unsafe.As<T, long>(ref value),
                         span.Length);
