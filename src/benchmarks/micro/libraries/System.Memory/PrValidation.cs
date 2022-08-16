@@ -26,59 +26,59 @@ namespace System.Memory
             _fourDefaultChars = new char[4];
         }
 
-        [Benchmark] public void Contains_byte() => _bytes.AsSpan().Contains((byte)1);
-        [Benchmark] public void Contains_char() => _chars.AsSpan().Contains('a');
+        [Benchmark] public void Contains_byte() => new ReadOnlySpan<byte>(_bytes).Contains((byte)1);
+        [Benchmark] public void Contains_char() => new ReadOnlySpan<char>(_chars).Contains('a');
 
-        [Benchmark] public void IndexOf_byte() => _bytes.AsSpan().IndexOf((byte)1);
-        [Benchmark] public void IndexOf_char() => _chars.AsSpan().IndexOf('a');
+        [Benchmark] public void IndexOf_byte() => new ReadOnlySpan<byte>(_bytes).IndexOf((byte)1);
+        [Benchmark] public void IndexOf_char() => new ReadOnlySpan<char>(_chars).IndexOf('a');
 
-        [Benchmark] public void IndexOfAnyExcept_byte() => _bytes.AsSpan().IndexOfAnyExcept(default(byte));
-        [Benchmark] public void IndexOfAnyExcept_char() => _chars.AsSpan().IndexOfAnyExcept(default(char));
+        [Benchmark] public void IndexOfAnyExcept_byte() => new ReadOnlySpan<byte>(_bytes).IndexOfAnyExcept(default(byte));
+        [Benchmark] public void IndexOfAnyExcept_char() => new ReadOnlySpan<char>(_chars).IndexOfAnyExcept(default(char));
 
-        [Benchmark] public void LastIndexOf_byte() => _bytes.AsSpan().LastIndexOf((byte)1);
-        [Benchmark] public void LastIndexOf_char() => _chars.AsSpan().LastIndexOf('a');
+        [Benchmark] public void LastIndexOf_byte() => new ReadOnlySpan<byte>(_bytes).LastIndexOf((byte)1);
+        [Benchmark] public void LastIndexOf_char() => new ReadOnlySpan<char>(_chars).LastIndexOf('a');
 
-        [Benchmark] public void LastIndexOfAnyExcept_byte() => _bytes.AsSpan().LastIndexOfAnyExcept(default(byte));
-        [Benchmark] public void LastIndexOfAnyExcept_char() => _chars.AsSpan().LastIndexOfAnyExcept(default(char));
+        [Benchmark] public void LastIndexOfAnyExcept_byte() => new ReadOnlySpan<byte>(_bytes).LastIndexOfAnyExcept(default(byte));
+        [Benchmark] public void LastIndexOfAnyExcept_char() => new ReadOnlySpan<char>(_chars).LastIndexOfAnyExcept(default(char));
 
-        [Benchmark] public void IndexOfAnyTwo_byte() => _bytes.AsSpan().IndexOfAny((byte)1, (byte)2);
-        [Benchmark] public void IndexOfAnyTwo_char() => _chars.AsSpan().IndexOfAny('a', 'b');
+        [Benchmark] public void IndexOfAnyTwo_byte() => new ReadOnlySpan<byte>(_bytes).IndexOfAny((byte)1, (byte)2);
+        [Benchmark] public void IndexOfAnyTwo_char() => new ReadOnlySpan<char>(_chars).IndexOfAny('a', 'b');
 
-        [Benchmark] public void IndexOfAnyExceptTwo_byte() => _bytes.AsSpan().IndexOfAnyExcept(default(byte), default(byte));
-        [Benchmark] public void IndexOfAnyExceptTwo_char() => _chars.AsSpan().IndexOfAny(default(char), default(char));
+        [Benchmark] public void IndexOfAnyExceptTwo_byte() => new ReadOnlySpan<byte>(_bytes).IndexOfAnyExcept(default(byte), default(byte));
+        [Benchmark] public void IndexOfAnyExceptTwo_char() => new ReadOnlySpan<char>(_chars).IndexOfAny(default(char), default(char));
 
-        [Benchmark] public void LastIndexOfAnyTwo_byte() => _bytes.AsSpan().LastIndexOfAny((byte)1, (byte)2);
-        [Benchmark] public void LastIndexOfAnyTwo_char() => _chars.AsSpan().LastIndexOfAny('a', 'b');
+        [Benchmark] public void LastIndexOfAnyTwo_byte() => new ReadOnlySpan<byte>(_bytes).LastIndexOfAny((byte)1, (byte)2);
+        [Benchmark] public void LastIndexOfAnyTwo_char() => new ReadOnlySpan<char>(_chars).LastIndexOfAny('a', 'b');
 
-        [Benchmark] public void LastIndexOfAnyExceptTwo_byte() => _bytes.AsSpan().LastIndexOfAnyExcept(default(byte), default(byte));
-        [Benchmark] public void LastIndexOfAnyExceptTwo_char() => _chars.AsSpan().LastIndexOfAnyExcept(default(char), default(char));
+        [Benchmark] public void LastIndexOfAnyExceptTwo_byte() => new ReadOnlySpan<byte>(_bytes).LastIndexOfAnyExcept(default(byte), default(byte));
+        [Benchmark] public void LastIndexOfAnyExceptTwo_char() => new ReadOnlySpan<char>(_chars).LastIndexOfAnyExcept(default(char), default(char));
 
-        [Benchmark] public void IndexOfAnyThree_byte() => _bytes.AsSpan().IndexOfAny((byte)1, (byte)2, (byte)3);
-        [Benchmark] public void IndexOfAnyThree_char() => _chars.AsSpan().IndexOfAny('a', 'b', 'c');
+        [Benchmark] public void IndexOfAnyThree_byte() => new ReadOnlySpan<byte>(_bytes).IndexOfAny((byte)1, (byte)2, (byte)3);
+        [Benchmark] public void IndexOfAnyThree_char() => new ReadOnlySpan<char>(_chars).IndexOfAny('a', 'b', 'c');
 
-        [Benchmark] public void IndexOfAnyExceptThree_byte() => _bytes.AsSpan().IndexOfAnyExcept(default(byte), default(byte), default(byte));
-        [Benchmark] public void IndexOfAnyExceptThree_char() => _chars.AsSpan().IndexOfAnyExcept(default(char), default(char), default(char));
+        [Benchmark] public void IndexOfAnyExceptThree_byte() => new ReadOnlySpan<byte>(_bytes).IndexOfAnyExcept(default(byte), default(byte), default(byte));
+        [Benchmark] public void IndexOfAnyExceptThree_char() => new ReadOnlySpan<char>(_chars).IndexOfAnyExcept(default(char), default(char), default(char));
 
-        [Benchmark] public void LastIndexOfAnyThree_byte() => _bytes.AsSpan().LastIndexOfAny((byte)1, (byte)2, (byte)3);
-        [Benchmark] public void LastIndexOfAnyThree_char() => _chars.AsSpan().LastIndexOfAny('a', 'b', 'c');
+        [Benchmark] public void LastIndexOfAnyThree_byte() => new ReadOnlySpan<byte>(_bytes).LastIndexOfAny((byte)1, (byte)2, (byte)3);
+        [Benchmark] public void LastIndexOfAnyThree_char() => new ReadOnlySpan<char>(_chars).LastIndexOfAny('a', 'b', 'c');
 
-        [Benchmark] public void LastIndexOfAnyExceptThree_byte() => _bytes.AsSpan().LastIndexOfAnyExcept(default(byte), default(byte), default(byte));
-        [Benchmark] public void LastIndexOfAnyExceptThree_char() => _chars.AsSpan().LastIndexOfAnyExcept(default(char), default(char), default(char));
+        [Benchmark] public void LastIndexOfAnyExceptThree_byte() => new ReadOnlySpan<byte>(_bytes).LastIndexOfAnyExcept(default(byte), default(byte), default(byte));
+        [Benchmark] public void LastIndexOfAnyExceptThree_char() => new ReadOnlySpan<char>(_chars).LastIndexOfAnyExcept(default(char), default(char), default(char));
 
-        [Benchmark] public void IndexOfAnyFour_byte() => _bytes.AsSpan().IndexOfAny(_fourBytes);
-        [Benchmark] public void IndexOfAnyFour_char() => _chars.AsSpan().IndexOfAny(_fourChars);
+        [Benchmark] public void IndexOfAnyFour_byte() => new ReadOnlySpan<byte>(_bytes).IndexOfAny(_fourBytes);
+        [Benchmark] public void IndexOfAnyFour_char() => new ReadOnlySpan<char>(_chars).IndexOfAny(_fourChars);
 
-        [Benchmark] public void IndexOfAnyExceptFour_byte() => _bytes.AsSpan().IndexOfAnyExcept(_fourDefaultBytes);
-        [Benchmark] public void IndexOfAnyExceptFour_char() => _chars.AsSpan().IndexOfAnyExcept(_fourDefaultChars);
+        [Benchmark] public void IndexOfAnyExceptFour_byte() => new ReadOnlySpan<byte>(_bytes).IndexOfAnyExcept(_fourDefaultBytes);
+        [Benchmark] public void IndexOfAnyExceptFour_char() => new ReadOnlySpan<char>(_chars).IndexOfAnyExcept(_fourDefaultChars);
 
-        [Benchmark] public void LastIndexOfAnyFour_byte() => _bytes.AsSpan().LastIndexOfAny(_fourBytes);
-        [Benchmark] public void LastIndexOfAnyFour_char() => _chars.AsSpan().LastIndexOfAny(_fourChars);
+        [Benchmark] public void LastIndexOfAnyFour_byte() => new ReadOnlySpan<byte>(_bytes).LastIndexOfAny(_fourBytes);
+        [Benchmark] public void LastIndexOfAnyFour_char() => new ReadOnlySpan<char>(_chars).LastIndexOfAny(_fourChars);
 
-        [Benchmark] public void LastIndexOfAnyExceptFour_byte() => _bytes.AsSpan().LastIndexOfAnyExcept(_fourDefaultBytes);
-        [Benchmark] public void LastIndexOfAnyExceptFour_char() => _chars.AsSpan().LastIndexOfAnyExcept(_fourDefaultChars);
+        [Benchmark] public void LastIndexOfAnyExceptFour_byte() => new ReadOnlySpan<byte>(_bytes).LastIndexOfAnyExcept(_fourDefaultBytes);
+        [Benchmark] public void LastIndexOfAnyExceptFour_char() => new ReadOnlySpan<char>(_chars).LastIndexOfAnyExcept(_fourDefaultChars);
 
         // currently vectorized only for chars
-        [Benchmark] public void IndexOfAnyFive_char() => _chars.AsSpan().IndexOfAny(_fiveChars);
+        [Benchmark] public void IndexOfAnyFive_char() => new ReadOnlySpan<char>(_chars).IndexOfAny(_fiveChars);
     }
 }
 #endif
