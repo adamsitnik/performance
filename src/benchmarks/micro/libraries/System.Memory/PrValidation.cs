@@ -51,7 +51,7 @@ namespace System.Memory
         [Benchmark] public void LastIndexOfAnyTwo_char() => _chars.AsSpan().LastIndexOfAny('a', 'b');
 
         [Benchmark] public void LastIndexOfAnyExceptTwo_byte() => _bytes.AsSpan().LastIndexOfAnyExcept(default(byte), default(byte));
-        [Benchmark] public void LastIndexOfAnyExceptTwo_char() => _chars.AsSpan().LastIndexOfAny(default(char), default(char));
+        [Benchmark] public void LastIndexOfAnyExceptTwo_char() => _chars.AsSpan().LastIndexOfAnyExcept(default(char), default(char));
 
         [Benchmark] public void IndexOfAnyThree_byte() => _bytes.AsSpan().IndexOfAny((byte)1, (byte)2, (byte)3);
         [Benchmark] public void IndexOfAnyThree_char() => _chars.AsSpan().IndexOfAny('a', 'b', 'c');
