@@ -144,6 +144,9 @@ namespace System.Memory
         [Benchmark()]
         public int Copy() => IndexOfValueType<short>(ref Unsafe.As<char, short>(ref _array[0]), (short)'a', _array.Length);
 
+        [Benchmark()]
+        public int FullCopy() => MemExtensions.IndexOfCopy(_array, 'a');
+
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private static int Current<T>(ref T searchSpace, T value, int length) where T : struct, INumber<T>
         {
@@ -345,6 +348,42 @@ namespace System.Memory
             public static bool NegateIfNeeded(bool equals) => !equals;
             public static Vector128<T> NegateIfNeeded(Vector128<T> equals) => ~equals;
             public static Vector256<T> NegateIfNeeded(Vector256<T> equals) => ~equals;
+        }
+    }
+
+    public static class MemExtensions
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int IndexOfCopy<T>(this ReadOnlySpan<T> span, T value) where T : IEquatable<T>
+        {
+            //if (RuntimeHelpers.IsBitwiseEquatable<T>())
+            {
+                if (Unsafe.SizeOf<T>() == sizeof(byte))
+                    return Experiment.IndexOfValueType(
+                        ref Unsafe.As<T, byte>(ref System.Runtime.InteropServices.MemoryMarshal.GetReference(span)),
+                        Unsafe.As<T, byte>(ref value),
+                        span.Length);
+
+                if (Unsafe.SizeOf<T>() == sizeof(short))
+                    return Experiment.IndexOfValueType(
+                        ref Unsafe.As<T, short>(ref System.Runtime.InteropServices.MemoryMarshal.GetReference(span)),
+                        Unsafe.As<T, short>(ref value),
+                        span.Length);
+
+                if (Unsafe.SizeOf<T>() == sizeof(int))
+                    return Experiment.IndexOfValueType(
+                        ref Unsafe.As<T, int>(ref System.Runtime.InteropServices.MemoryMarshal.GetReference(span)),
+                        Unsafe.As<T, int>(ref value),
+                        span.Length);
+
+                if (Unsafe.SizeOf<T>() == sizeof(long))
+                    return Experiment.IndexOfValueType(
+                        ref Unsafe.As<T, long>(ref System.Runtime.InteropServices.MemoryMarshal.GetReference(span)),
+                        Unsafe.As<T, long>(ref value),
+                        span.Length);
+            }
+
+            return System.MemoryExtensions.IndexOf(span, value);
         }
     }
 #endif
