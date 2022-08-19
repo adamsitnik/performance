@@ -10,7 +10,7 @@ namespace System.Text.Tests
     [BenchmarkCategory(Categories.Libraries)]
     public class Perf_Encoding
     {
-        [Params(16, 512)]
+        [Params(16, 32, 64, 512)]
         public int size; 
         
         [Params("utf-8", "ascii")]
