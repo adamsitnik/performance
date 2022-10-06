@@ -18,7 +18,7 @@ namespace System.Memory
     public class Span<T> 
         where T : struct, IComparable<T>, IEquatable<T>
     {
-        [Params(Utils.DefaultCollectionSize)]
+        [Params(8, 32, 64, 128, Utils.DefaultCollectionSize)]
         public int Size;
 
         private T[] _array, _same, _different, _emptyWithSingleValue;
