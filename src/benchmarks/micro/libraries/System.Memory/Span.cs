@@ -14,11 +14,12 @@ namespace System.Memory
     [GenericTypeArguments(typeof(byte))]
     [GenericTypeArguments(typeof(char))]
     [GenericTypeArguments(typeof(int))]
+    [GenericTypeArguments(typeof(long))]
     [BenchmarkCategory(Categories.Runtime, Categories.Libraries, Categories.Span)]
     public class Span<T> 
         where T : struct, IComparable<T>, IEquatable<T>
     {
-        [Params(Utils.DefaultCollectionSize)]
+        [Params(4, 8, 16, 32, 64, Utils.DefaultCollectionSize)]
         public int Size;
 
         private T[] _array, _same, _different, _emptyWithSingleValue;
