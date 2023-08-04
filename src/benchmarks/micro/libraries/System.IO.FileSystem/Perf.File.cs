@@ -271,4 +271,31 @@ namespace System.IO.Tests
         [Arguments(HundredMibibytes)]
         public void CopyToOverwrite(int size) => File.Copy(_filesToRead[size], _testFilePath, overwrite: true);
     }
+
+    [BenchmarkCategory(Categories.Libraries)]
+    [HideColumns("Error", "StdDev", "Median", "RatioSD")]
+    [MemoryDiagnoser(false)]
+    public partial class Perf_FileCopyTo
+    {
+        private string _source;
+        private string _dest;
+
+        [GlobalSetup]
+        public void Setup()
+        {
+            _source = Path.GetTempFileName();
+            File.WriteAllBytes(_source, Enumerable.Repeat((byte)42, 1_000_000).ToArray());
+            _dest = Path.GetRandomFileName();
+        }
+
+        [Benchmark]
+        public void FileCopy() => File.Copy(_source, _dest, overwrite: true);
+
+        [GlobalCleanup]
+        public void Cleanup()
+        {
+            File.Delete(_source);
+            File.Delete(_dest);
+        }
+    }
 }
